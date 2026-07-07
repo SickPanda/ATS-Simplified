@@ -4,6 +4,8 @@ export default function JobsView() {
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [candidates, setCandidates] = useState({ submitted: [], relevant: [] });
+  const [newJobTitle, setNewJobTitle] = useState('');
+  const [newJobDept, setNewJobDept] = useState('');
 
   useEffect(() => {
     fetch('/api/ats/jobs')
@@ -25,6 +27,25 @@ export default function JobsView() {
       .catch(err => console.error("Error fetching candidates for job", err));
   };
 
+  const handleCreateJob = async (e) => {
+    e.preventDefault();
+    if (!newJobTitle || !newJobDept) return;
+    
+    try {
+      const response = await fetch('/api/ats/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newJobTitle, department: newJobDept, status: 'Active' })
+      });
+      const created = await response.json();
+      setJobs(prev => [...prev, created]);
+      setNewJobTitle('');
+      setNewJobDept('');
+    } catch (err) {
+      console.error("Error creating job", err);
+    }
+  };
+
   return (
     <div style={styles.container}>
       {/* Left Column: Job List */}
@@ -42,6 +63,25 @@ export default function JobsView() {
               <p style={styles.jobDept}>{job.department} • {job.status}</p>
             </div>
           ))}
+        </div>
+        
+        <div style={{marginTop: '2rem'}}>
+          <h3 style={styles.subHeader}>Create New Job</h3>
+          <form onSubmit={handleCreateJob} style={styles.createForm}>
+            <input 
+              style={styles.input} 
+              placeholder="Job Title" 
+              value={newJobTitle} 
+              onChange={e => setNewJobTitle(e.target.value)} 
+            />
+            <input 
+              style={styles.input} 
+              placeholder="Department" 
+              value={newJobDept} 
+              onChange={e => setNewJobDept(e.target.value)} 
+            />
+            <button type="submit" className="btn-primary" style={{padding: '0.5rem 1rem'}}>Create</button>
+          </form>
         </div>
       </div>
 
@@ -175,5 +215,17 @@ const styles = {
   noData: {
     color: 'hsl(var(--text-muted-hsl))',
     fontStyle: 'italic'
+  },
+  createForm: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem'
+  },
+  input: {
+    padding: '0.5rem',
+    borderRadius: '4px',
+    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'rgba(0,0,0,0.2)',
+    color: 'white'
   }
 };

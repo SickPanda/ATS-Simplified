@@ -41,4 +41,38 @@ public class AtsController : ControllerBase
             Relevant = relevant
         });
     }
+
+    [HttpPost("jobs")]
+    public async Task<ActionResult<Job>> CreateJob(Job job)
+    {
+        _context.Jobs.Add(job);
+        await _context.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetJobs), new { id = job.Id }, job);
+    }
+
+    [HttpPut("candidates/{id}/status")]
+    public async Task<IActionResult> UpdateCandidateStatus(int id, [FromBody] string status)
+    {
+        var candidate = await _context.Candidates.FindAsync(id);
+        if (candidate == null) return NotFound();
+
+        candidate.Stage = status;
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPut("candidates/{id}/assign")]
+    public async Task<IActionResult> AssignCandidateToJob(int id, [FromBody] int jobId)
+    {
+        var candidate = await _context.Candidates.FindAsync(id);
+        if (candidate == null) return NotFound();
+
+        if (!candidate.SubmittedJobIds.Contains(jobId))
+        {
+            candidate.SubmittedJobIds.Add(jobId);
+            await _context.SaveChangesAsync();
+        }
+        
+        return NoContent();
+    }
 }

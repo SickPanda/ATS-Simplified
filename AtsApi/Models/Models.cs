@@ -10,6 +10,7 @@ public class Candidate
     public string Email { get; set; } = string.Empty;
     public int? MatchScore { get; set; }
     public double? Rating { get; set; }
+    public string? ResumeFilePath { get; set; }
     public List<int> SubmittedJobIds { get; set; } = new List<int>();
     public List<int> RelevantJobIds { get; set; } = new List<int>();
 }

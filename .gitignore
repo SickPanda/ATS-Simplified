@@ -3,6 +3,7 @@ dist/
 AtsApi/bin/
 AtsApi/obj/
 .env
+appsettings.*.json
 AtsApi/ats.db
 AtsApi/ats.db-shm
 AtsApi/ats.db-wal

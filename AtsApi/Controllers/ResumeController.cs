@@ -16,15 +16,16 @@ public class ResumeController : ControllerBase
     private readonly HttpClient _httpClient;
     private readonly AtsDbContext _context;
     
-    // Optional HF API key. If empty, it attempts unauthenticated or falls back to Regex.
-    private const string HuggingFaceApiKey = ""; 
+    private readonly IConfiguration _configuration;
     
+    // We use a fast, free instruct model on HF for JSON extraction
     private const string ModelEndpoint = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
 
-    public ResumeController(AtsDbContext context)
+    public ResumeController(AtsDbContext context, IConfiguration configuration)
     {
         _httpClient = new HttpClient();
         _context = context;
+        _configuration = configuration;
     }
 
     [HttpPost("parse")]
@@ -55,6 +56,21 @@ public class ResumeController : ControllerBase
                 // Fallback to Regex Parser instead of Simulated Data
                 parsedCandidate = ParseWithRegex(extractedText);
             }
+
+            // Save PDF to wwwroot/resumes
+            var resumesFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "resumes");
+            if (!Directory.Exists(resumesFolder))
+                Directory.CreateDirectory(resumesFolder);
+                
+            var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+            var filePath = Path.Combine(resumesFolder, fileName);
+            
+            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(fileStream);
+            }
+
+            parsedCandidate.ResumeFilePath = "/resumes/" + fileName;
 
             // Save to database
             _context.Candidates.Add(parsedCandidate);
@@ -131,9 +147,10 @@ Resume Text:
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, ModelEndpoint);
-        if (!string.IsNullOrEmpty(HuggingFaceApiKey))
+        var huggingFaceApiKey = _configuration["HuggingFaceApiKey"];
+        if (!string.IsNullOrEmpty(huggingFaceApiKey))
         {
-            request.Headers.Add("Authorization", $"Bearer {HuggingFaceApiKey}");
+            request.Headers.Add("Authorization", $"Bearer {huggingFaceApiKey}");
         }
         request.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 

@@ -5,12 +5,47 @@ export default function CandidatesView() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  const [jobs, setJobs] = useState([]);
+
   useEffect(() => {
     fetch('/api/ats/candidates')
       .then(res => res.json())
       .then(data => setCandidates(data))
       .catch(err => console.error("Error fetching candidates", err));
+      
+    fetch('/api/ats/jobs')
+      .then(res => res.json())
+      .then(data => setJobs(data))
+      .catch(err => console.error("Error fetching jobs", err));
   }, []);
+
+  const handleStatusChange = async (candidateId, newStatus) => {
+    try {
+      await fetch(`/api/ats/candidates/${candidateId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newStatus)
+      });
+      setCandidates(prev => prev.map(c => c.id === candidateId ? { ...c, stage: newStatus } : c));
+    } catch (err) {
+      console.error("Error updating status", err);
+    }
+  };
+
+  const handleAssignJob = async (candidateId, jobId) => {
+    if (!jobId) return;
+    try {
+      await fetch(`/api/ats/candidates/${candidateId}/assign`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parseInt(jobId))
+      });
+      alert('Candidate assigned to job successfully!');
+      // In a real app we'd update local state too, but let's re-fetch or just alert for now.
+    } catch (err) {
+      console.error("Error assigning job", err);
+    }
+  };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -67,8 +102,9 @@ export default function CandidatesView() {
               <th style={styles.th}>Candidate Name</th>
               <th style={styles.th}>Role / Headline</th>
               <th style={styles.th}>Experience</th>
-              <th style={styles.th}>Email</th>
-              <th style={styles.th}>Rating</th>
+              <th style={styles.th}>Status</th>
+              <th style={styles.th}>Assign To Job</th>
+              <th style={styles.th}>Resume</th>
             </tr>
           </thead>
           <tbody>
@@ -82,12 +118,37 @@ export default function CandidatesView() {
                 </td>
                 <td style={styles.td}>{c.role}</td>
                 <td style={styles.td}>{c.experience}</td>
-                <td style={styles.td}>{c.email}</td>
                 <td style={styles.td}>
-                  {c.rating ? (
-                    <span style={styles.ratingBadge}>⭐ {c.rating}</span>
+                  <select 
+                    value={c.stage} 
+                    onChange={(e) => handleStatusChange(c.id, e.target.value)}
+                    style={styles.select}
+                  >
+                    <option value="applied">Applied</option>
+                    <option value="interviewing">Interviewing</option>
+                    <option value="offer">Offer</option>
+                    <option value="hired">Hired</option>
+                  </select>
+                </td>
+                <td style={styles.td}>
+                  <select 
+                    onChange={(e) => handleAssignJob(c.id, e.target.value)}
+                    style={styles.select}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Select Job...</option>
+                    {jobs.map(j => (
+                      <option key={j.id} value={j.id}>{j.title}</option>
+                    ))}
+                  </select>
+                </td>
+                <td style={styles.td}>
+                  {c.resumeFilePath ? (
+                    <a href={`http://localhost:5003${c.resumeFilePath}`} target="_blank" rel="noreferrer" style={{color: 'hsl(var(--primary-hsl))', textDecoration: 'none'}}>
+                      View PDF
+                    </a>
                   ) : (
-                    <span style={styles.unratedBadge}>Unrated</span>
+                    <span style={styles.unratedBadge}>No file</span>
                   )}
                 </td>
               </tr>
@@ -173,5 +234,14 @@ const styles = {
   unratedBadge: {
     color: 'hsl(var(--text-muted-hsl))',
     fontSize: '0.85rem'
+  },
+  select: {
+    padding: '0.5rem',
+    borderRadius: '4px',
+    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'rgba(0,0,0,0.2)',
+    color: 'white',
+    fontSize: '0.85rem',
+    cursor: 'pointer'
   }
 };
