@@ -1,0 +1,9 @@
+node_modules/
+dist/
+AtsApi/bin/
+AtsApi/obj/
+.env
+AtsApi/ats.db
+AtsApi/ats.db-shm
+AtsApi/ats.db-wal
+.vscode/
