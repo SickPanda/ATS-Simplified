@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using System.Text;
+using System.Text.RegularExpressions;
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas.Parser;
 using iText.Kernel.Pdf.Canvas.Parser.Listener;
@@ -15,10 +16,9 @@ public class ResumeController : ControllerBase
     private readonly HttpClient _httpClient;
     private readonly AtsDbContext _context;
     
-    // We leave this empty for the user to fill in, or we simulate if empty.
+    // Optional HF API key. If empty, it attempts unauthenticated or falls back to Regex.
     private const string HuggingFaceApiKey = ""; 
     
-    // We use a fast, free instruct model on HF for JSON extraction
     private const string ModelEndpoint = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
 
     public ResumeController(AtsDbContext context)
@@ -35,7 +35,6 @@ public class ResumeController : ControllerBase
 
         try
         {
-            // 1. Extract text from PDF
             string extractedText = "";
             using (var stream = file.OpenReadStream())
             using (var pdfReader = new PdfReader(stream))
@@ -49,18 +48,18 @@ public class ResumeController : ControllerBase
                 }
             }
 
-            // 2. Send to LLM for structed parsing
             var parsedCandidate = await CallHuggingFaceLlmAsync(extractedText);
 
-            if (parsedCandidate != null)
+            if (parsedCandidate == null)
             {
-                // Save to database
-                _context.Candidates.Add(parsedCandidate);
-                await _context.SaveChangesAsync();
-                return Ok(new { message = "Resume parsed and saved successfully.", candidate = parsedCandidate });
+                // Fallback to Regex Parser instead of Simulated Data
+                parsedCandidate = ParseWithRegex(extractedText);
             }
 
-            return BadRequest("Failed to parse resume into a candidate profile.");
+            // Save to database
+            _context.Candidates.Add(parsedCandidate);
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Resume parsed and saved successfully.", candidate = parsedCandidate });
         }
         catch (Exception ex)
         {
@@ -68,23 +67,44 @@ public class ResumeController : ControllerBase
         }
     }
 
-    private async Task<Candidate?> CallHuggingFaceLlmAsync(string resumeText)
+    private Candidate ParseWithRegex(string text)
     {
-        if (string.IsNullOrEmpty(HuggingFaceApiKey))
+        var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        string name = "Unknown";
+        if (lines.Length > 0)
         {
-            // Fallback simulation for learning purposes if key is not set
-            return new Candidate {
-                Name = "Simulated Applicant (Add HF Token)",
-                Role = "Software Engineer",
-                Experience = "5 years",
-                Email = "simulated@example.com",
-                Stage = "applied",
-                MatchScore = 80,
-                Rating = 4.0
-            };
+            // Assume first line is name
+            name = lines[0].Trim();
         }
 
-        // Prompt designed for strict JSON extraction
+        string email = "Unknown";
+        var emailMatch = Regex.Match(text, @"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}");
+        if (emailMatch.Success) email = emailMatch.Value;
+
+        string role = "Developer";
+        var roleMatch = Regex.Match(text, @"(?i)(software engineer|frontend engineer|backend developer|product designer|data scientist|manager|developer)");
+        if (roleMatch.Success) role = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(roleMatch.Value.ToLower());
+
+        string experience = "Entry Level";
+        var expMatch = Regex.Match(text, @"(?i)(\d+)\+?\s+years");
+        if (expMatch.Success) experience = expMatch.Value;
+
+        return new Candidate
+        {
+            Name = name,
+            Role = role,
+            Experience = experience,
+            Email = email,
+            Stage = "applied",
+            MatchScore = 75,
+            Rating = 3.5,
+            SubmittedJobIds = new List<int>(),
+            RelevantJobIds = new List<int>()
+        };
+    }
+
+    private async Task<Candidate?> CallHuggingFaceLlmAsync(string resumeText)
+    {
         string prompt = $@"
 [INST] Extract the following information from the resume text below. 
 Respond ONLY with a valid JSON object matching this schema:
@@ -111,18 +131,21 @@ Resume Text:
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, ModelEndpoint);
-        request.Headers.Add("Authorization", $"Bearer {HuggingFaceApiKey}");
+        if (!string.IsNullOrEmpty(HuggingFaceApiKey))
+        {
+            request.Headers.Add("Authorization", $"Bearer {HuggingFaceApiKey}");
+        }
         request.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.SendAsync(request);
-        if (response.IsSuccessStatusCode)
+        try
         {
-            var responseString = await response.Content.ReadAsStringAsync();
-            try {
+            var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var responseString = await response.Content.ReadAsStringAsync();
                 using var jsonDoc = JsonDocument.Parse(responseString);
                 var generatedText = jsonDoc.RootElement[0].GetProperty("generated_text").GetString();
                 
-                // Try to parse the generated text as JSON
                 if (!string.IsNullOrEmpty(generatedText))
                 {
                     int startIndex = generatedText.IndexOf('{');
@@ -137,18 +160,20 @@ Resume Text:
                             {
                                 Name = data.GetValueOrDefault("Name", "Unknown"),
                                 Role = data.GetValueOrDefault("Role", "Unknown"),
-                                Experience = data.GetValueOrDefault("Experience", ""),
-                                Email = data.GetValueOrDefault("Email", ""),
-                                Stage = "applied"
+                                Experience = data.GetValueOrDefault("Experience", "Unknown"),
+                                Email = data.GetValueOrDefault("Email", "Unknown"),
+                                Stage = "applied",
+                                SubmittedJobIds = new List<int>(),
+                                RelevantJobIds = new List<int>()
                             };
                         }
                     }
                 }
-            } 
-            catch 
-            {
-                return null;
             }
+        }
+        catch
+        {
+            // Ignore API failures and let it fall back
         }
         return null;
     }

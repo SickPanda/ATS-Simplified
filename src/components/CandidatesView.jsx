@@ -27,9 +27,10 @@ export default function CandidatesView() {
       });
       const result = await response.json();
       console.log("Parsed Resume Result:", result);
-      alert('Resume parsed successfully! Check console for AI extracted JSON data.');
       
-      // In a real app, we would add the parsed candidate to the list here.
+      if (result.candidate) {
+        setCandidates(prev => [...prev, result.candidate]);
+      }
     } catch (err) {
       console.error("Error uploading resume", err);
       alert('Failed to parse resume.');
