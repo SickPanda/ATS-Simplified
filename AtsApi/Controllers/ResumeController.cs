@@ -2,10 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using System.Text;
 using System.Text.RegularExpressions;
-using iText.Kernel.Pdf;
-using iText.Kernel.Pdf.Canvas.Parser;
-using iText.Kernel.Pdf.Canvas.Parser.Listener;
 using AtsApi.Models;
+using DocumentFormat.OpenXml.Packaging;
+using PdfiumViewer;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace AtsApi.Controllers;
 
@@ -17,9 +18,6 @@ public class ResumeController : ControllerBase
     private readonly AtsDbContext _context;
     
     private readonly IConfiguration _configuration;
-    
-    // We use a fast, free instruct model on HF for JSON extraction
-    private const string ModelEndpoint = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
 
     public ResumeController(AtsDbContext context, IConfiguration configuration)
     {
@@ -34,27 +32,31 @@ public class ResumeController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest("No file uploaded.");
 
+        var ext = Path.GetExtension(file.FileName).ToLower();
+        if (ext != ".pdf" && ext != ".docx")
+            return BadRequest("Only .pdf and .docx files are supported.");
+
         try
         {
-            string extractedText = "";
-            using (var stream = file.OpenReadStream())
-            using (var pdfReader = new PdfReader(stream))
-            using (var pdfDocument = new PdfDocument(pdfReader))
-            {
-                for (int i = 1; i <= pdfDocument.GetNumberOfPages(); i++)
-                {
-                    var strategy = new LocationTextExtractionStrategy();
-                    string text = PdfTextExtractor.GetTextFromPage(pdfDocument.GetPage(i), strategy);
-                    extractedText += text + "\n";
-                }
-            }
+            var customApiKey = Request.Headers["X-Gemini-Key"].ToString();
+            Candidate? parsedCandidate = null;
 
-            var parsedCandidate = await CallHuggingFaceLlmAsync(extractedText);
+            if (ext == ".docx")
+            {
+                string text = ExtractTextFromDocx(file);
+                parsedCandidate = await CallGeminiLlmAsync(text: text, customApiKey: customApiKey);
+                if (parsedCandidate == null)
+                    return StatusCode(502, "Gemini API failed to parse the DOCX. Check that your API key is valid.");
+            }
+            else if (ext == ".pdf")
+            {
+                var base64Images = ConvertPdfToImages(file);
+                parsedCandidate = await CallGeminiLlmAsync(images: base64Images, customApiKey: customApiKey);
+            }
 
             if (parsedCandidate == null)
             {
-                // Fallback to Regex Parser instead of Simulated Data
-                parsedCandidate = ParseWithRegex(extractedText);
+                return StatusCode(500, "Failed to parse the document.");
             }
 
             // Save PDF to wwwroot/resumes
@@ -62,7 +64,7 @@ public class ResumeController : ControllerBase
             if (!Directory.Exists(resumesFolder))
                 Directory.CreateDirectory(resumesFolder);
                 
-            var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+            var fileName = Guid.NewGuid().ToString() + ext;
             var filePath = Path.Combine(resumesFolder, fileName);
             
             using (var fileStream = new FileStream(filePath, FileMode.Create))
@@ -83,13 +85,36 @@ public class ResumeController : ControllerBase
         }
     }
 
+    private string ExtractTextFromDocx(IFormFile file)
+    {
+        using var stream = file.OpenReadStream();
+        using var wordDoc = WordprocessingDocument.Open(stream, false);
+        var body = wordDoc.MainDocumentPart?.Document.Body;
+        return body?.InnerText ?? "";
+    }
+
+    private List<string> ConvertPdfToImages(IFormFile file)
+    {
+        var base64Images = new List<string>();
+        using var stream = file.OpenReadStream();
+        using var pdfDocument = PdfDocument.Load(stream);
+        for (int i = 0; i < pdfDocument.PageCount; i++)
+        {
+            // Use 200 DPI for good OCR quality while keeping token size reasonable
+            using var image = pdfDocument.Render(i, 200, 200, PdfRenderFlags.CorrectFromDpi);
+            using var ms = new MemoryStream();
+            image.Save(ms, ImageFormat.Png);
+            base64Images.Add(Convert.ToBase64String(ms.ToArray()));
+        }
+        return base64Images;
+    }
+
     private Candidate ParseWithRegex(string text)
     {
         var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         string name = "Unknown";
         if (lines.Length > 0)
         {
-            // Assume first line is name
             name = lines[0].Trim();
         }
 
@@ -111,86 +136,112 @@ public class ResumeController : ControllerBase
             Role = role,
             Experience = experience,
             Email = email,
-            Stage = "applied",
-            MatchScore = 75,
-            Rating = 3.5,
-            SubmittedJobIds = new List<int>(),
-            RelevantJobIds = new List<int>()
+            Phone = "Unknown",
+            Education = "Unknown",
+            SkillsJson = "[]"
         };
     }
 
-    private async Task<Candidate?> CallHuggingFaceLlmAsync(string resumeText)
+    private async Task<Candidate?> CallGeminiLlmAsync(string? text = null, List<string>? images = null, string customApiKey = "")
     {
-        string prompt = $@"
-[INST] Extract the following information from the resume text below. 
-Respond ONLY with a valid JSON object matching this schema:
-{{
+        var apiKey = !string.IsNullOrEmpty(customApiKey) ? customApiKey : _configuration["GeminiApiKey"];
+        if (string.IsNullOrEmpty(apiKey)) 
+        {
+            throw new Exception("Gemini API Key is missing. Please provide it in Settings.");
+        }
+
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
+
+        var parts = new List<object>();
+        
+        string prompt = @"Extract the following information from the resume. 
+Respond ONLY with a valid JSON object matching this schema. Do NOT use markdown code blocks, just raw JSON:
+{
   ""Name"": """",
   ""Role"": """",
   ""Experience"": """",
-  ""Email"": """"
-}}
+  ""Email"": """",
+  ""Phone"": """",
+  ""Education"": """",
+  ""Skills"": [""skill1"", ""skill2""]
+}";
 
-Resume Text:
-{resumeText}
-[/INST]";
+        parts.Add(new { text = prompt });
+
+        if (!string.IsNullOrEmpty(text))
+        {
+            parts.Add(new { text = "\nResume Text:\n" + text });
+        }
+        
+        if (images != null)
+        {
+            foreach (var imgBase64 in images)
+            {
+                parts.Add(new {
+                    inline_data = new {
+                        mime_type = "image/png",
+                        data = imgBase64
+                    }
+                });
+            }
+        }
 
         var requestBody = new
         {
-            inputs = prompt,
-            parameters = new
-            {
-                max_new_tokens = 250,
-                temperature = 0.1,
-                return_full_text = false
-            }
+            contents = new[] { new { parts = parts } },
+            generationConfig = new { responseMimeType = "application/json" }
         };
 
-        var request = new HttpRequestMessage(HttpMethod.Post, ModelEndpoint);
-        var huggingFaceApiKey = _configuration["HuggingFaceApiKey"];
-        if (!string.IsNullOrEmpty(huggingFaceApiKey))
-        {
-            request.Headers.Add("Authorization", $"Bearer {huggingFaceApiKey}");
-        }
-        request.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+        var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
         try
         {
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.PostAsync(url, content);
+            var responseString = await response.Content.ReadAsStringAsync();
+            
             if (response.IsSuccessStatusCode)
             {
-                var responseString = await response.Content.ReadAsStringAsync();
                 using var jsonDoc = JsonDocument.Parse(responseString);
-                var generatedText = jsonDoc.RootElement[0].GetProperty("generated_text").GetString();
-                
-                if (!string.IsNullOrEmpty(generatedText))
+                var candidatesList = jsonDoc.RootElement.GetProperty("candidates");
+                if (candidatesList.GetArrayLength() > 0)
                 {
-                    int startIndex = generatedText.IndexOf('{');
-                    int endIndex = generatedText.LastIndexOf('}');
-                    if (startIndex != -1 && endIndex != -1)
+                    var generatedText = candidatesList[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
+                    
+                    if (!string.IsNullOrEmpty(generatedText))
                     {
-                        string jsonOnly = generatedText.Substring(startIndex, endIndex - startIndex + 1);
-                        var data = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonOnly);
-                        if (data != null)
+                        // Clean up markdown if any
+                        generatedText = generatedText.Trim();
+                        if (generatedText.StartsWith("```json"))
                         {
-                            return new Candidate
-                            {
-                                Name = data.GetValueOrDefault("Name", "Unknown"),
-                                Role = data.GetValueOrDefault("Role", "Unknown"),
-                                Experience = data.GetValueOrDefault("Experience", "Unknown"),
-                                Email = data.GetValueOrDefault("Email", "Unknown"),
-                                Stage = "applied",
-                                SubmittedJobIds = new List<int>(),
-                                RelevantJobIds = new List<int>()
-                            };
+                            generatedText = generatedText.Substring(7);
+                            if (generatedText.EndsWith("```")) generatedText = generatedText.Substring(0, generatedText.Length - 3);
                         }
+                        
+                        using var data = JsonDocument.Parse(generatedText.Trim());
+                        return new Candidate
+                        {
+                            Name = data.RootElement.TryGetProperty("Name", out var n) ? n.GetString() ?? "Unknown" : "Unknown",
+                            Role = data.RootElement.TryGetProperty("Role", out var r) ? r.GetString() ?? "Unknown" : "Unknown",
+                            Experience = data.RootElement.TryGetProperty("Experience", out var ex) ? ex.GetString() ?? "Unknown" : "Unknown",
+                            Email = data.RootElement.TryGetProperty("Email", out var em) ? em.GetString() ?? "Unknown" : "Unknown",
+                            Phone = data.RootElement.TryGetProperty("Phone", out var p) ? p.GetString() ?? "Unknown" : "Unknown",
+                            Education = data.RootElement.TryGetProperty("Education", out var ed) ? ed.GetString() ?? "Unknown" : "Unknown",
+                            SkillsJson = data.RootElement.TryGetProperty("Skills", out var skills) ? skills.GetRawText() : "[]"
+                        };
                     }
                 }
             }
+            else
+            {
+                var errorMsg = "Gemini API Error: " + response.StatusCode + " - " + responseString;
+                Console.WriteLine(errorMsg);
+                throw new Exception(errorMsg);
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore API failures and let it fall back
+            Console.WriteLine("Exception calling Gemini: " + ex.Message);
+            throw; // Re-throw to be caught by the outer block and returned to UI
         }
         return null;
     }
