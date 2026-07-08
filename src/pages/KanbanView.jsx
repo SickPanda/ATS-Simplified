@@ -34,6 +34,7 @@ export default function KanbanView() {
   const [applications, setApplications] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [assigning, setAssigning] = useState(null);
+  const [showAssign, setShowAssign] = useState(false);
   const [submittingApp, setSubmittingApp] = useState(null);
   const [submittalSummary, setSubmittalSummary] = useState('');
   const [submitting, setSubmitting] = useState(false);
