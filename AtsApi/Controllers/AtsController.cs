@@ -53,6 +53,32 @@ public class AtsController : ControllerBase
         return CreatedAtAction(nameof(GetJobs), new { id = job.Id }, job);
     }
 
+    [HttpGet("jobs/{id}")]
+    public async Task<ActionResult<Job>> GetJob(int id)
+    {
+        var job = await _context.Jobs.FindAsync(id);
+        if (job == null) return NotFound();
+        return job;
+    }
+
+    [HttpPut("jobs/{id}")]
+    public async Task<IActionResult> UpdateJob(int id, Job jobUpdates)
+    {
+        var job = await _context.Jobs.FindAsync(id);
+        if (job == null) return NotFound();
+
+        job.Title = jobUpdates.Title;
+        job.Department = jobUpdates.Department;
+        job.Location = jobUpdates.Location;
+        job.SalaryRange = jobUpdates.SalaryRange;
+        job.Description = jobUpdates.Description;
+        job.RequiredSkillsJson = jobUpdates.RequiredSkillsJson;
+        job.ClientId = jobUpdates.ClientId;
+
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
     // -- CANDIDATES --
     [HttpGet("candidates")]
     public async Task<ActionResult<IEnumerable<Candidate>>> GetCandidates()
@@ -108,6 +134,12 @@ public class AtsController : ControllerBase
             .FirstOrDefaultAsync(a => a.Id == app.Id);
             
         return Ok(fullApp);
+    }
+
+    [HttpGet("applications")]
+    public async Task<ActionResult<IEnumerable<Application>>> GetAllApplications()
+    {
+        return await _context.Applications.ToListAsync();
     }
 
     private async Task<int> ComputeMatchScoreAsync(Candidate candidate, Job job)

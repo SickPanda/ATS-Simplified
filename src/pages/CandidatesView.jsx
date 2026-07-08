@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Upload, FileText, X, Phone, Mail, GraduationCap, Briefcase, Search, Trash2, Filter, ChevronDown, CloudUpload, AlertCircle, CheckCircle, Zap, Send, LayoutList, TerminalSquare } from 'lucide-react';
+import { Upload, FileText, X, Phone, Mail, GraduationCap, Briefcase, Search, Trash2, Filter, ChevronDown, CloudUpload, AlertCircle, CheckCircle, Zap, Send, LayoutList, TerminalSquare, Users } from 'lucide-react';
 
 const AVATAR_COLORS = [
   ['#6d5cff','#1a1650'],['#22d3ee','#0a3040'],['#10b981','#0a2820'],
@@ -333,10 +333,10 @@ export default function CandidatesView() {
       <div className="anim-fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
         <div>
           <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:800, fontSize:22, color:'var(--text-1)', letterSpacing:'-0.03em' }}>
-            Candidates
+            Talent Command Center
           </h2>
           <p style={{ fontSize:13, color:'var(--text-3)', marginTop:3 }}>
-            {candidates.length} profiles in your database
+            Discover and manage your talent pool
           </p>
         </div>
         <div style={{ display:'flex', gap:8 }}>
@@ -355,6 +355,25 @@ export default function CandidatesView() {
               <><Upload size={14} /> Upload Resume</>
             )}
           </button>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="anim-fade-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, animationDelay: '0.05s' }}>
+        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(109,92,255,0.1) 0%, rgba(109,92,255,0.02) 100%)', border: '1px solid rgba(109,92,255,0.2)' }}>
+          <div className="kpi-icon" style={{ background: 'var(--primary-glow)' }}><Users size={18} color="var(--primary-light)" /></div>
+          <div className="kpi-val">{candidates.length}</div>
+          <div className="kpi-label">Total Talent Pool</div>
+        </div>
+        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.02) 100%)', border: '1px solid rgba(16,185,129,0.2)' }}>
+          <div className="kpi-icon" style={{ background: 'rgba(16,185,129,0.15)' }}><Briefcase size={18} color="var(--emerald)" /></div>
+          <div className="kpi-val">{candidates.filter(c => c.experience?.toLowerCase().includes('senior') || c.experience?.toLowerCase().includes('lead')).length}</div>
+          <div className="kpi-label">Senior / Lead Profiles</div>
+        </div>
+        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(34,211,238,0.1) 0%, rgba(34,211,238,0.02) 100%)', border: '1px solid rgba(34,211,238,0.2)' }}>
+          <div className="kpi-icon" style={{ background: 'rgba(34,211,238,0.15)' }}><Zap size={18} color="var(--cyan)" /></div>
+          <div className="kpi-val">{allSkills.length}</div>
+          <div className="kpi-label">Unique Skills Parsed</div>
         </div>
       </div>
 

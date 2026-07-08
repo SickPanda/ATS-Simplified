@@ -453,3 +453,26 @@ body {
   color: var(--text-3); text-align: center;
 }
 .empty-state svg { opacity: 0.2; }
+
+.trow {
+  transition: all var(--t-fast);
+  border-bottom: 1px solid var(--border);
+}
+.trow:last-child {
+  border-bottom: none;
+}
+.trow:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.kanban-card {
+  transition: transform 0.2s var(--ease-out), border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.kanban-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(109, 92, 255, 0.4) !important;
+  box-shadow: 0 8px 24px rgba(109, 92, 255, 0.12) !important;
+}
+.kanban-card:active {
+  cursor: grabbing;
+}

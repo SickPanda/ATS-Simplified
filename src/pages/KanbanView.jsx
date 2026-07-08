@@ -28,7 +28,7 @@ function ScorePill({ score }) {
   return <span className={`score ${cls}`}>{score}% match</span>;
 }
 
-export default function KanbanView() {
+export default function KanbanView({ isEmbedded = false }) {
   const { id } = useParams();
   const [job, setJob] = useState(null);
   const [applications, setApplications] = useState([]);
@@ -49,6 +49,7 @@ export default function KanbanView() {
   const [billRate, setBillRate] = useState('');
   
   const [toast, setToast] = useState(null);
+  const [enabled, setEnabled] = useState(false);
 
   const showToast = (msg, type = 'error') => {
     setToast({ msg, type });
@@ -61,6 +62,12 @@ export default function KanbanView() {
     });
     fetchApps();
     fetch('/api/ats/candidates').then(r=>r.json()).then(setCandidates);
+
+    const animation = requestAnimationFrame(() => setEnabled(true));
+    return () => {
+      cancelAnimationFrame(animation);
+      setEnabled(false);
+    };
   }, [id]);
 
   const fetchApps = () =>
@@ -159,7 +166,7 @@ export default function KanbanView() {
     fetchApps();
   };
 
-  if (!job) return (
+  if (!enabled || !job) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', gap:10, color:'var(--text-3)' }}>
       <div className="anim-spin" style={{width:18,height:18,border:'2px solid var(--border)',borderTopColor:'var(--primary)',borderRadius:'50%'}} />
       Loading pipeline...
@@ -184,61 +191,70 @@ export default function KanbanView() {
         </div>
       )}
 
-      {/* Sub-header */}
-      <div style={{
-        padding:'16px 24px',
-        borderBottom:'1px solid rgba(255, 255, 255, 0.08)',
-        display:'flex', alignItems:'center', justifyContent:'space-between',
-        background:'transparent',
-        flexShrink:0,
-      }}>
-        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-          <Link to="/jobs" style={{ display:'flex',alignItems:'center',gap:5,fontSize:12.5,color:'var(--text-3)',textDecoration:'none',fontWeight:500 }}
-            onMouseEnter={e=>e.currentTarget.style.color='var(--text-1)'}
-            onMouseLeave={e=>e.currentTarget.style.color='var(--text-3)'}
-          >
-            <ArrowLeft size={14} /> Jobs
-          </Link>
-          <span style={{ color:'var(--border-hover)', fontSize:14 }}>/</span>
-          <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:15, color:'var(--text-1)' }}>
-            {job.title}
-          </h2>
-          <span className="badge badge-primary">Pipeline</span>
+      {/* Sub-header (only shown if NOT embedded) */}
+      {!isEmbedded ? (
+        <div style={{
+          padding:'16px 24px',
+          borderBottom:'1px solid rgba(255, 255, 255, 0.08)',
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          background:'transparent',
+          flexShrink:0,
+        }}>
+          <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+            <Link to="/jobs" style={{ display:'flex',alignItems:'center',gap:5,fontSize:12.5,color:'var(--text-3)',textDecoration:'none',fontWeight:500 }}
+              onMouseEnter={e=>e.currentTarget.style.color='var(--text-1)'}
+              onMouseLeave={e=>e.currentTarget.style.color='var(--text-3)'}
+            >
+              <ArrowLeft size={14} /> Jobs
+            </Link>
+            <span style={{ color:'var(--border-hover)', fontSize:14 }}>/</span>
+            <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:15, color:'var(--text-1)' }}>
+              {job.title}
+            </h2>
+            <span className="badge badge-primary">Pipeline</span>
+          </div>
+          <button className="btn btn-ghost" style={{ fontSize:13 }} onClick={()=>setShowAssign(true)}>
+            <UserPlus size={14} /> Assign Candidate
+          </button>
         </div>
-        <button className="btn btn-ghost" style={{ fontSize:13 }} onClick={()=>setShowAssign(true)}>
-          <UserPlus size={14} /> Assign Candidate
-        </button>
-      </div>
+      ) : (
+        /* Slim embedded toolbar */
+        <div style={{ padding: '16px 32px 8px', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+          <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={()=>setShowAssign(true)}>
+            <UserPlus size={14} /> Assign Candidate
+          </button>
+        </div>
+      )}
 
       {/* Kanban board */}
-      <div style={{ flex:1, overflow:'auto', padding:'20px 20px 32px' }}>
+      <div style={{ flex:1, overflow:'auto', padding:'12px 32px 32px' }}>
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div style={{ display:'flex', gap:14, height:'100%', minWidth:'max-content' }}>
+          <div style={{ display:'flex', gap:18, height:'100%', minWidth:'max-content' }}>
             {COLUMNS.map(col => {
               const colApps = applications.filter(a=>a.stage===col.id);
               return (
                 <div key={col.id} style={{
-                  width:280, flexShrink:0, display:'flex', flexDirection:'column',
-                  background:'rgba(22, 25, 43, 0.35)',
-                  backdropFilter: 'blur(16px)',
-                  WebkitBackdropFilter: 'blur(16px)',
-                  borderRadius:12,
-                  border:'1px solid rgba(255, 255, 255, 0.06)',
-                  borderTop:`2px solid ${col.color}`,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                  width:290, flexShrink:0, display:'flex', flexDirection:'column',
+                  background:'rgba(17, 19, 31, 0.45)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  borderRadius:16,
+                  border:'1px solid rgba(255, 255, 255, 0.05)',
+                  borderTop:`3px solid ${col.color}`,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
                   overflow:'hidden',
                 }}>
                   {/* Column header */}
-                  <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <div style={{ width:7,height:7,borderRadius:'50%',background:col.color,boxShadow:`0 0 8px ${col.color}` }} />
-                      <span style={{ fontSize:13, fontWeight:600, color:'var(--text-1)' }}>{col.label}</span>
+                  <div style={{ padding:'14px 18px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', justifyContent:'space-between', alignItems:'center', background: 'rgba(255,255,255,0.01)' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <div style={{ width:8,height:8,borderRadius:'50%',background:col.color,boxShadow:`0 0 10px ${col.color}` }} />
+                      <span style={{ fontSize:13.5, fontWeight:700, color:'var(--text-1)', letterSpacing: '-0.01em' }}>{col.label}</span>
                     </div>
                     <span style={{
-                      fontSize:11, fontWeight:700,
-                      background:'rgba(255,255,255,0.06)',
-                      color:'var(--text-3)',
-                      padding:'2px 8px', borderRadius:99,
+                      fontSize:11, fontWeight:800,
+                      background:'rgba(255,255,255,0.08)',
+                      color:'var(--text-2)',
+                      padding:'3px 9px', borderRadius:99,
                     }}>{colApps.length}</span>
                   </div>
 
@@ -248,10 +264,10 @@ export default function KanbanView() {
                         ref={provided.innerRef}
                         {...provided.droppableProps}
                         style={{
-                          flex:1, padding:'10px 10px',
-                          display:'flex', flexDirection:'column', gap:8,
+                          flex:1, padding:'12px',
+                          display:'flex', flexDirection:'column', gap:10,
                           minHeight:60,
-                          background: snapshot.isDraggingOver ? `linear-gradient(to bottom, rgba(${col.color==='#22d3ee'?'34,211,238':col.color==='#a78bfa'?'167,139,250':col.color==='#f59e0b'?'245,158,11':col.color==='#6d5cff'?'109,92,255':col.color==='#10b981'?'16,185,129':'244,63,94'},0.1), transparent)` : 'transparent',
+                          background: snapshot.isDraggingOver ? `linear-gradient(to bottom, rgba(${col.color==='#22d3ee'?'34,211,238':col.color==='#a78bfa'?'167,139,250':col.color==='#f59e0b'?'245,158,11':col.color==='#6d5cff'?'109,92,255':col.color==='#10b981'?'16,185,129':'244,63,94'},0.06), transparent)` : 'transparent',
                           transition:'background 0.3s ease',
                           overflowY:'auto',
                         }}
@@ -266,31 +282,31 @@ export default function KanbanView() {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
+                                  className="kanban-card"
                                   style={{
                                     ...provided.draggableProps.style,
-                                    background: snapshot.isDragging ? 'rgba(30, 34, 56, 0.95)' : 'rgba(30, 34, 56, 0.7)',
+                                    background: snapshot.isDragging ? 'rgba(30, 34, 56, 0.95)' : 'rgba(23, 27, 44, 0.65)',
                                     backdropFilter: 'blur(12px)',
                                     WebkitBackdropFilter: 'blur(12px)',
-                                    border:`1px solid ${snapshot.isDragging ? col.color : 'rgba(255, 255, 255, 0.08)'}`,
-                                    borderRadius:10,
-                                    padding:'12px 12px',
-                                    boxShadow: snapshot.isDragging ? `0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px ${col.color}` : '0 4px 12px rgba(0,0,0,0.1)',
-                                    transition: snapshot.isDragging ? 'none' : 'all 0.2s cubic-bezier(0.16,1,0.3,1)',
+                                    border:`1px solid ${snapshot.isDragging ? col.color : 'rgba(255, 255, 255, 0.06)'}`,
+                                    borderRadius:12,
+                                    padding:'14px',
+                                    boxShadow: snapshot.isDragging ? `0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px ${col.color}` : '0 4px 16px rgba(0,0,0,0.15)',
                                     cursor:'grab',
                                   }}
                                 >
-                                  <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-                                    <div className="avatar" style={{ background:bg, color:fg, flexShrink:0, width:30, height:30, fontSize:11 }}>
+                                  <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
+                                    <div className="avatar" style={{ background:bg, color:fg, flexShrink:0, width:32, height:32, fontSize:11.5, fontWeight: 700 }}>
                                       {getInitials(name)}
                                     </div>
                                     <div style={{ flex:1, minWidth:0 }}>
-                                      <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', lineHeight:1.3 }}>{name}</div>
-                                      <div style={{ fontSize:11.5, color:'var(--text-3)', marginTop:1 }}>{app.candidate?.role}</div>
+                                      <div style={{ fontSize:13.5, fontWeight:700, color:'var(--text-1)', lineHeight:1.3, letterSpacing: '-0.01em' }}>{name}</div>
+                                      <div style={{ fontSize:11.5, color:'var(--text-3)', marginTop:2, fontWeight: 500 }}>{app.candidate?.role}</div>
                                     </div>
                                   </div>
-                                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:10 }}>
+                                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:14 }}>
                                     <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'var(--text-4)' }}>
-                                      <Calendar size={11} />
+                                      <Calendar size={12} />
                                       {new Date(app.appliedAt).toLocaleDateString()}
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -298,30 +314,30 @@ export default function KanbanView() {
                                         <button 
                                           className="btn-icon" 
                                           title="Submit to Client" 
-                                          style={{ width: 24, height: 24, background: 'rgba(255,255,255,0.05)' }}
+                                          style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.05)', borderRadius: 6 }}
                                           onClick={() => setSubmittingApp(app)}
                                         >
-                                          <Send size={11} color="var(--cyan)" />
+                                          <Send size={12} color="var(--cyan)" />
                                         </button>
                                       )}
                                       {col.id === 'Interview' && (
                                         <button 
                                           className="btn-icon" 
                                           title="Schedule Interview" 
-                                          style={{ width: 24, height: 24, background: 'rgba(255,255,255,0.05)' }}
+                                          style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.05)', borderRadius: 6 }}
                                           onClick={() => setInterviewingApp(app)}
                                         >
-                                          <CalendarPlus size={11} color="var(--amber)" />
+                                          <CalendarPlus size={12} color="var(--amber)" />
                                         </button>
                                       )}
                                       {(col.id === 'Offer' || col.id === 'Hired') && (
                                         <button 
                                           className="btn-icon" 
                                           title="Mark Placed & Set Margin" 
-                                          style={{ width: 24, height: 24, background: 'rgba(255,255,255,0.05)' }}
+                                          style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.05)', borderRadius: 6 }}
                                           onClick={() => setPlacingApp(app)}
                                         >
-                                          <CheckCircle size={11} color="var(--emerald)" />
+                                          <CheckCircle size={12} color="var(--emerald)" />
                                         </button>
                                       )}
                                       <ScorePill score={app.matchScore} />
@@ -334,7 +350,7 @@ export default function KanbanView() {
                         })}
                         {provided.placeholder}
                         {colApps.length === 0 && !snapshot.isDraggingOver && (
-                          <div style={{ textAlign:'center', padding:'20px 0', fontSize:12, color:'var(--text-4)' }}>
+                          <div style={{ textAlign:'center', padding:'24px 0', fontSize:12, color:'var(--text-4)', fontWeight: 500 }}>
                             Drop here
                           </div>
                         )}

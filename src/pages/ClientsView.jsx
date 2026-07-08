@@ -62,7 +62,7 @@ export default function ClientsView() {
       <div className="anim-fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:800, fontSize:22, color:'var(--text-1)', letterSpacing:'-0.03em' }}>
-            Clients
+            Client Command Center
           </h2>
           <p style={{ fontSize:13, color:'var(--text-3)', marginTop:3 }}>
             Manage hiring companies and staffing clients
@@ -71,6 +71,20 @@ export default function ClientsView() {
         <button className="btn btn-primary" onClick={() => setShowDrawer(true)}>
           <Plus size={14} /> New Client
         </button>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="anim-fade-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, animationDelay: '0.05s' }}>
+        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(109,92,255,0.1) 0%, rgba(109,92,255,0.02) 100%)', border: '1px solid rgba(109,92,255,0.2)' }}>
+          <div className="kpi-icon" style={{ background: 'var(--primary-glow)' }}><Building2 size={18} color="var(--primary-light)" /></div>
+          <div className="kpi-val">{clients.length}</div>
+          <div className="kpi-label">Active Clients</div>
+        </div>
+        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(34,211,238,0.1) 0%, rgba(34,211,238,0.02) 100%)', border: '1px solid rgba(34,211,238,0.2)' }}>
+          <div className="kpi-icon" style={{ background: 'rgba(34,211,238,0.15)' }}><MapPin size={18} color="var(--cyan)" /></div>
+          <div className="kpi-val">{new Set(clients.map(c => c.industry).filter(Boolean)).size}</div>
+          <div className="kpi-label">Industries Represented</div>
+        </div>
       </div>
 
       {/* Filters */}

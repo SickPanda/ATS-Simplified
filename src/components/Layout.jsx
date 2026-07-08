@@ -8,6 +8,7 @@ import CandidatesView from '../pages/CandidatesView.jsx';
 import KanbanView from '../pages/KanbanView.jsx';
 import SettingsView from '../pages/SettingsView.jsx';
 import ClientsView from '../pages/ClientsView.jsx';
+import JobWorkspace from '../pages/JobWorkspace.jsx';
 
 const PAGE_TITLES = {
   '/': 'Dashboard',
@@ -283,7 +284,7 @@ export default function Layout() {
             <Routes>
               <Route path="/"                      element={<DashboardView />} />
               <Route path="/jobs"                   element={<JobsView />} />
-              <Route path="/jobs/:id/pipeline"      element={<KanbanView />} />
+              <Route path="/jobs/:id/*"             element={<JobWorkspace />} />
               <Route path="/candidates"             element={<CandidatesView />} />
               {!isRecruiter && <Route path="/clients"                element={<ClientsView />} />}
               {!isRecruiter && <Route path="/settings"               element={<SettingsView />} />}
