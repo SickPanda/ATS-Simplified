@@ -11,8 +11,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Hugging Face Spaces runs on port 7860
-ENV ASPNETCORE_URLS=http://+:7860
-EXPOSE 7860
+# Default port 8080
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "AtsApi.dll"]
