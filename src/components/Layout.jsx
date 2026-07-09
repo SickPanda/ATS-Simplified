@@ -39,10 +39,10 @@ function Sidebar({ user, logout }) {
   return (
     <aside style={{
       width: 'var(--sidebar-width)',
-      background: 'rgba(22, 25, 43, 0.4)',
-      backdropFilter: 'blur(24px)',
-      WebkitBackdropFilter: 'blur(24px)',
-      borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+      background: 'rgba(255, 255, 255, 0.82)',
+      backdropFilter: 'blur(24px) saturate(1.8)',
+      WebkitBackdropFilter: 'blur(24px) saturate(1.8)',
+      borderRight: '1px solid rgba(0, 0, 0, 0.07)',
       display: 'flex',
       flexDirection: 'column',
       flexShrink: 0,
@@ -55,7 +55,7 @@ function Sidebar({ user, logout }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 32, height: 32,
-            background: 'linear-gradient(135deg, var(--primary) 0%, #a78bfa 100%)',
+            background: 'linear-gradient(135deg, var(--primary) 0%, var(--rose) 100%)',
             borderRadius: 9,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 16px var(--primary-glow-strong)',
@@ -123,7 +123,7 @@ function Sidebar({ user, logout }) {
           cursor: 'pointer',
           transition: 'background var(--t-fast)',
         }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
           <div style={{
@@ -174,10 +174,10 @@ function Topbar({ user }) {
   return (
     <header style={{
       height: 'var(--topbar-height)',
-      background: 'rgba(15, 17, 26, 0.6)',
-      backdropFilter: 'blur(24px)',
-      WebkitBackdropFilter: 'blur(24px)',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+      background: 'rgba(250, 248, 245, 0.88)',
+      backdropFilter: 'blur(20px) saturate(1.6)',
+      WebkitBackdropFilter: 'blur(20px) saturate(1.6)',
+      borderBottom: '1px solid rgba(0, 0, 0, 0.07)',
       display: 'flex',
       alignItems: 'center',
       padding: '0 24px',
@@ -228,8 +228,8 @@ function Topbar({ user }) {
           {showDropdown && (
             <div style={{
               position: 'absolute', top: '100%', right: 0, marginTop: 10,
-              width: 320, background: 'var(--surface-2)', border: '1px solid var(--border)',
-              borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.4)', zIndex: 50,
+              width: 320, background: '#fff', border: '1px solid var(--border)',
+              borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.12)', zIndex: 50,
               overflow: 'hidden'
             }}>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>
