@@ -1,9 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Plus, MapPin, DollarSign, LayoutList, LayoutGrid, 
   Power, X, ChevronRight, Briefcase, Users, MoreVertical, 
-  Copy, Edit, Trash, Share2, CheckCircle, BarChart3, Clock
+  Copy, Edit, Trash, Share2, CheckCircle, BarChart3, Clock,
+  ChevronDown, ChevronUp, Landmark, ShieldCheck, UserCheck, ArrowRight
 } from 'lucide-react';
 
 const STATUS_TABS = ['All', 'Active', 'Draft', 'Closed'];
@@ -20,26 +21,42 @@ export default function JobsView() {
   const [jobs, setJobs] = useState([]);
   const [clients, setClients] = useState([]);
   const [allApps, setAllApps] = useState([]);
+  const [submittals, setSubmittals] = useState([]);
   
   const [tab, setTab] = useState('All');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('list'); // 'grid' | 'list'
   const [showDrawer, setShowDrawer] = useState(false);
-  const [newJob, setNewJob] = useState({ title:'', department:'', location:'', salaryRange:'', description:'', clientId: '', requiredSkillsJson: '' });
+  const [expandedJobId, setExpandedJobId] = useState(null); // Collapsible row ID
+  
+  // New Job form
+  const [newJob, setNewJob] = useState({ 
+    title:'', department:'', location:'', salaryRange:'', description:'', clientId: '', 
+    requiredSkillsJson: '', jobCode: '', clientJobId: '', billRate: '', payRate: '',
+    recruitmentManager: 'Aazam Qureshi', primaryRecruiter: 'Aazam Qureshi'
+  });
   const [saving, setSaving] = useState(false);
   
-  const [actionMenuOpen, setActionMenuOpen] = useState(null); // jobId
+  const [actionMenuOpen, setActionMenuOpen] = useState(null);
   const navigate = useNavigate();
 
   const fetchData = async () => {
     try {
-      const [jRes, cRes, aRes] = await Promise.all([
+      const [jRes, cRes, aRes, sRes] = await Promise.all([
         fetch('/api/ats/jobs'),
         fetch('/api/ats/clients'),
-        fetch('/api/ats/applications')
+        fetch('/api/ats/applications'),
+        fetch('/api/ats/submittals') // Assuming this endpoint is available or falls back
       ]);
       setJobs(await jRes.json());
       setClients(await cRes.json());
       setAllApps(await aRes.json());
+      
+      // Fallback submittals seeding if fetch fails
+      try {
+        setSubmittals(await sRes.json());
+      } catch {
+        setSubmittals([]);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -52,7 +69,11 @@ export default function JobsView() {
   const handleCreate = async (e) => {
     e.preventDefault();
     setSaving(true);
-    const payload = { ...newJob };
+    const payload = { 
+      ...newJob,
+      billRate: parseFloat(newJob.billRate || '0'),
+      payRate: parseFloat(newJob.payRate || '0')
+    };
     if (payload.clientId) payload.clientId = parseInt(payload.clientId);
     if (payload.requiredSkillsJson) {
       const skillsArr = payload.requiredSkillsJson.split(',').map(s => s.trim()).filter(Boolean);
@@ -65,7 +86,11 @@ export default function JobsView() {
     });
     setSaving(false);
     setShowDrawer(false);
-    setNewJob({ title:'', department:'', location:'', salaryRange:'', description:'', clientId: '', requiredSkillsJson: '' });
+    setNewJob({ 
+      title:'', department:'', location:'', salaryRange:'', description:'', clientId: '', 
+      requiredSkillsJson: '', jobCode: '', clientJobId: '', billRate: '', payRate: '',
+      recruitmentManager: 'Aazam Qureshi', primaryRecruiter: 'Aazam Qureshi'
+    });
     fetchData();
   };
 
@@ -85,18 +110,14 @@ export default function JobsView() {
   const activePipelineCount = allApps.filter(a => a.stage !== 'Rejected' && a.stage !== 'Hired').length;
   const totalHired = allApps.filter(a => a.stage === 'Hired').length;
   
-  // Renders the mini funnel for a specific job
+  // Funnel component
   const PipelineFunnel = ({ jobId }) => {
     const jobApps = allApps.filter(a => a.jobId === jobId && a.stage !== 'Rejected');
-    const total = jobApps.length || 1; // prevent div by zero
+    const total = jobApps.length || 1;
     
     return (
-      <div style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', marginBottom: 6 }}>
-          <span>PIPELINE</span>
-          <span>{jobApps.length} Candidates</span>
-        </div>
-        <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'rgba(255,255,255,0.05)', gap: 1 }}>
+      <div style={{ marginTop: 12 }}>
+        <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: 'rgba(255,255,255,0.05)', gap: 1 }}>
           {FUNNEL_STAGES.map(stage => {
             const count = jobApps.filter(a => a.stage === stage.id).length;
             const percent = (count / total) * 100;
@@ -113,88 +134,66 @@ export default function JobsView() {
             );
           })}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-          {FUNNEL_STAGES.map(stage => {
-            const count = jobApps.filter(a => a.stage === stage.id).length;
-            if (count === 0) return null;
-            return (
-              <span key={stage.id} style={{ fontSize: 10, fontWeight: 700, color: stage.color }}>
-                {count} {stage.id.substring(0,3).toUpperCase()}
-              </span>
-            );
-          })}
-        </div>
       </div>
     );
   };
 
   const statusBadge = (s) => {
-    if (s === 'Active') return <span className="badge badge-active" style={{ fontSize: 11 }}><span className="dot dot-active" />Active</span>;
-    if (s === 'Draft')  return <span className="badge badge-draft" style={{ fontSize: 11 }}><span className="dot dot-draft" />Draft</span>;
-    return <span className="badge badge-closed" style={{ fontSize: 11 }}><span className="dot dot-closed" />Closed</span>;
+    if (s === 'Active') return <span className="badge badge-active"><span className="dot dot-active" />Active</span>;
+    if (s === 'Draft')  return <span className="badge badge-draft"><span className="dot dot-draft" />Draft</span>;
+    return <span className="badge badge-closed"><span className="dot dot-closed" />Closed</span>;
   };
 
   return (
-    <div style={{ padding:'28px 28px 60px', maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding:'28px 28px 60px', maxWidth: 1600, margin: '0 auto', display:'flex', flexDirection:'column', gap:20 }}>
       
       {/* Header */}
-      <div className="anim-fade-up" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:28 }}>
+      <div className="anim-fade-up" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
         <div>
-          <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:800, fontSize:26, color:'var(--text-1)', letterSpacing:'-0.03em' }}>
-            Job Command Center
+          <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:800, fontSize:22, color:'var(--text-1)', letterSpacing:'-0.03em' }}>
+            Requirements Command Center
           </h2>
-          <p style={{ fontSize:13.5, color:'var(--text-3)', marginTop:4 }}>
-            Manage requisitions, monitor pipelines, and track placements.
+          <p style={{ fontSize:13, color:'var(--text-3)', marginTop:3 }}>
+            Manage client job orders, evaluate submissions, and track billing margins
           </p>
         </div>
         <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: 13 }} onClick={()=>setShowDrawer(true)}>
-          <Plus size={15} /> Create Job
+          <Plus size={15} /> Post Requirement
         </button>
       </div>
 
       {/* KPI Row */}
-      <div className="anim-fade-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32, animationDelay: '0.05s' }}>
-        <div className="card-lift" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.05em' }}>ACTIVE JOBS</span>
-            <Briefcase size={16} color="var(--primary-light)" />
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-1)' }}>{activeJobsCount}</div>
+      <div className="anim-fade-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, animationDelay: '0.05s' }}>
+        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(109,92,255,0.1) 0%, rgba(109,92,255,0.02) 100%)', border: '1px solid rgba(109,92,255,0.2)' }}>
+          <div className="kpi-icon" style={{ background: 'var(--primary-glow)' }}><Briefcase size={18} color="var(--primary-light)" /></div>
+          <div className="kpi-val">{activeJobsCount}</div>
+          <div className="kpi-label">Active Requirements</div>
         </div>
-        
-        <div className="card-lift" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.05em' }}>IN PIPELINE</span>
-            <Users size={16} color="var(--cyan)" />
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-1)' }}>{activePipelineCount}</div>
+        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(34,211,238,0.1) 0%, rgba(34,211,238,0.02) 100%)', border: '1px solid rgba(34,211,238,0.2)' }}>
+          <div className="kpi-icon" style={{ background: 'rgba(34,211,238,0.15)' }}><Users size={18} color="var(--cyan)" /></div>
+          <div className="kpi-val">{activePipelineCount}</div>
+          <div className="kpi-label">Candidates in Pipeline</div>
         </div>
-
-        <div className="card-lift" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.05em' }}>AVG TIME TO HIRE</span>
-            <Clock size={16} color="var(--amber)" />
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-1)' }}>18 <span style={{ fontSize: 14, color: 'var(--text-3)', fontWeight: 600 }}>days</span></div>
+        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.02) 100%)', border: '1px solid rgba(245,158,11,0.2)' }}>
+          <div className="kpi-icon" style={{ background: 'rgba(245,158,11,0.15)' }}><Clock size={18} color="var(--amber)" /></div>
+          <div className="kpi-val">14 <span style={{ fontSize: 13, color: 'var(--text-3)' }}>days</span></div>
+          <div className="kpi-label">Average Time-to-Fill</div>
         </div>
-
-        <div className="card-lift" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.05em' }}>TOTAL PLACEMENTS</span>
-            <CheckCircle size={16} color="var(--emerald)" />
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-1)' }}>{totalHired}</div>
+        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.02) 100%)', border: '1px solid rgba(16,185,129,0.2)' }}>
+          <div className="kpi-icon" style={{ background: 'rgba(16,185,129,0.15)' }}><CheckCircle size={18} color="var(--emerald)" /></div>
+          <div className="kpi-val">{totalHired}</div>
+          <div className="kpi-label">Client Placements</div>
         </div>
       </div>
 
       {/* Toolbar */}
-      <div className="anim-fade-up" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, animationDelay:'0.1s' }}>
+      <div className="anim-fade-up" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', animationDelay:'0.1s' }}>
         <div className="tab-bar">
           {STATUS_TABS.map(t => (
             <button key={t} className={`tab${tab===t?' active':''}`} onClick={()=>setTab(t)}>
               {t}
               <span style={{
-                marginLeft:6, fontSize:10.5, fontWeight:700,
+                marginLeft:6, fontSize:10, fontWeight:700,
                 background: tab===t?'rgba(255,255,255,0.1)':'rgba(255,255,255,0.04)',
                 padding:'1px 6px', borderRadius:99,
                 color: tab===t?'var(--text-1)':'var(--text-4)',
@@ -223,70 +222,68 @@ export default function JobsView() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content grid/list */}
       {filteredJobs.length > 0 ? (
         viewMode === 'grid' ? (
           <div className="stagger" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(360px,1fr))', gap:20 }}>
             {filteredJobs.map(job => {
               let skills = [];
               try { skills = JSON.parse(job.requiredSkillsJson||'[]'); } catch {}
+              const client = clients.find(c => c.id === job.clientId);
               return (
                 <div key={job.id} className="card-lift" style={{ display:'flex', flexDirection:'column' }}>
-                  <div style={{ padding: '22px 22px 16px' }}>
+                  <div style={{ padding: '22px 22px 16px', flex:1 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                       <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
-                        <div style={{ width:42, height:42, borderRadius:12, background:'linear-gradient(135deg, rgba(109,92,255,0.15) 0%, rgba(34,211,238,0.1) 100%)', display:'flex', alignItems:'center', justifyContent:'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ width:42, height:42, borderRadius:10, background:'var(--surface-2)', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                           <Briefcase size={18} color="var(--primary-light)" />
                         </div>
                         <div>
-                          <h3 style={{ fontSize:17, fontWeight:800, color:'var(--text-1)', lineHeight:1.3, letterSpacing:'-0.02em' }}>
+                          <div style={{ fontSize:11, fontWeight:700, color:'var(--text-3)', letterSpacing:'0.03em' }}>
+                            {job.jobCode || `REQ-${job.id}`} {job.clientJobId && `· ${job.clientJobId}`}
+                          </div>
+                          <h3 style={{ fontSize:15.5, fontWeight:800, color:'var(--text-1)', lineHeight:1.3, marginTop:3 }}>
                             <Link to={`/jobs/${job.id}`} style={{ color: 'inherit', textDecoration: 'none' }} className="hover-underline">{job.title}</Link>
                           </h3>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                            <span style={{ fontSize:12.5, fontWeight:600, color:'var(--text-3)' }}>{job.department}</span>
-                            <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-4)' }} />
-                            <span style={{ fontSize:12.5, fontWeight:500, color:'var(--text-4)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <MapPin size={12} /> {job.location}
-                            </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                            <span style={{ fontSize:12, color:'var(--text-2)', fontWeight:600 }}>{client?.name || 'Internal'}</span>
+                            <span style={{ fontSize:12, color:'var(--text-4)' }}>•</span>
+                            <span style={{ fontSize:12, color:'var(--text-3)' }}>{job.location}</span>
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Action Menu */}
                       <div style={{ position: 'relative' }}>
                         <button className="btn-icon" onClick={() => setActionMenuOpen(actionMenuOpen === job.id ? null : job.id)}>
-                          <MoreVertical size={16} />
+                          <MoreVertical size={15} />
                         </button>
                         {actionMenuOpen === job.id && (
-                          <div className="dropdown-menu" style={{ position: 'absolute', top: 30, right: 0, zIndex: 10, width: 160, background: 'var(--surface-light)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
-                            <div className="dropdown-item" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-2)', cursor: 'pointer' }} onClick={() => { navigate(`/jobs/${job.id}`); setActionMenuOpen(null); }} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.05)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                              <BarChart3 size={14} /> View Pipeline
+                          <div className="dropdown-menu" style={{ position: 'absolute', top: 30, right: 0, zIndex: 10, width: 160, background: 'var(--surface-light)', border: '1px solid var(--border)', borderRadius: 10, overflow:'hidden' }}>
+                            <div className="dropdown-item" style={{ padding:'10px 14px', fontSize:12.5, color:'var(--text-2)', cursor:'pointer' }} onClick={() => { navigate(`/jobs/${job.id}`); setActionMenuOpen(null); }}>
+                              View Pipeline
                             </div>
-                            <div className="dropdown-item" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-2)', cursor: 'pointer' }} onClick={() => { 
-                              navigator.clipboard.writeText(`${window.location.origin}/jobs/${job.id}`);
-                              setActionMenuOpen(null);
-                            }} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.05)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                              <Share2 size={14} /> Copy Link
-                            </div>
-                            <div style={{ height: 1, background: 'var(--border)' }} />
-                            <div className="dropdown-item" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-2)', cursor: 'pointer' }} onClick={() => toggleStatus(job)} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.05)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                              <Power size={14} color={job.status==='Active' ? 'var(--rose)' : 'var(--emerald)'} /> 
-                              <span style={{ color: job.status==='Active' ? 'var(--rose)' : 'var(--emerald)' }}>
-                                {job.status === 'Active' ? 'Close Job' : 'Reopen Job'}
-                              </span>
+                            <div className="dropdown-item" style={{ padding:'10px 14px', fontSize:12.5, color:'var(--text-2)', cursor:'pointer' }} onClick={() => toggleStatus(job)}>
+                              {job.status === 'Active' ? 'Close Requirement' : 'Reopen Requirement'}
                             </div>
                           </div>
                         )}
                       </div>
                     </div>
-                    
+
+                    <div style={{ marginTop:14, fontSize:12, color:'var(--text-2)' }}>
+                      Bill Rate: <strong>${job.billRate}/hr</strong> · Pay Rate: <strong>${job.payRate}/hr</strong>
+                      <span style={{ color:'var(--emerald)', fontWeight:700, marginLeft:6 }}>(${job.billRate - job.payRate}/hr Margin)</span>
+                    </div>
+
                     <PipelineFunnel jobId={job.id} />
                   </div>
 
-                  <div style={{ background: 'rgba(0,0,0,0.15)', padding: '16px 22px', borderTop: '1px solid var(--border)', borderBottomLeftRadius: 16, borderBottomRightRadius: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                  <div style={{ background: 'rgba(0,0,0,0.15)', padding: '12px 20px', borderTop: '1px solid var(--border)', borderBottomLeftRadius: 14, borderBottomRightRadius: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
                       {skills.slice(0, 3).map((s,i) => (
-                        <span key={i} style={{ padding:'2px 8px', borderRadius:6, fontSize:11, fontWeight:600, background:'rgba(255,255,255,0.06)', color:'var(--text-2)' }}>{s}</span>
+                        <span key={i} style={{ padding:'2px 7px', borderRadius:4, fontSize:10.5, fontWeight:600, background:'rgba(255,255,255,0.05)', color:'var(--text-2)' }}>{s}</span>
                       ))}
-                      {skills.length > 3 && <span style={{ padding:'2px 8px', borderRadius:6, fontSize:11, fontWeight:600, background:'rgba(255,255,255,0.03)', color:'var(--text-4)' }}>+{skills.length - 3}</span>}
                     </div>
                     {statusBadge(job.status)}
                   </div>
@@ -295,62 +292,121 @@ export default function JobsView() {
             })}
           </div>
         ) : (
+          /* List Mode (Ceipal Table style with collapsible submittals) */
           <div className="card anim-fade-up" style={{ padding: 0, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
-                  <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.05em' }}>JOB TITLE</th>
-                  <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.05em' }}>DEPARTMENT</th>
-                  <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.05em' }}>STATUS</th>
-                  <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.05em' }}>PIPELINE</th>
-                  <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.05em', width: 60 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredJobs.map(job => {
-                  const jobApps = allApps.filter(a => a.jobId === job.id && a.stage !== 'Rejected');
-                  return (
-                    <tr key={job.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>
-                          <Link to={`/jobs/${job.id}/pipeline`} style={{ color: 'inherit', textDecoration: 'none' }} className="hover-underline">{job.title}</Link>
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={10} /> {job.location}</div>
-                      </td>
-                      <td style={{ padding: '16px 20px', fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>{job.department}</td>
-                      <td style={{ padding: '16px 20px' }}>{statusBadge(job.status)}</td>
-                      <td style={{ padding: '16px 20px', width: '30%' }}>
-                        <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: 'rgba(255,255,255,0.05)', gap: 1 }}>
-                          {FUNNEL_STAGES.map(stage => {
-                            const count = jobApps.filter(a => a.stage === stage.id).length;
-                            const percent = (count / (jobApps.length || 1)) * 100;
-                            return <div key={stage.id} style={{ width: `${percent}%`, background: count > 0 ? stage.color : 'transparent' }} />;
-                          })}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontWeight: 600 }}>{jobApps.length} Total</div>
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                         <Link to={`/jobs/${job.id}`} className="btn-icon">
-                           <ChevronRight size={16} />
-                         </Link>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div style={{ overflowX:'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize:13 }}>
+                <thead>
+                  <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ padding: '12px 20px', width:40 }}></th>
+                    <th style={{ padding: '12px 20px', color: 'var(--text-3)', fontWeight: 600 }}>JOB CODE / TITLE</th>
+                    <th style={{ padding: '12px 20px', color: 'var(--text-3)', fontWeight: 600 }}>CLIENT ACCOUNT</th>
+                    <th style={{ padding: '12px 20px', color: 'var(--text-3)', fontWeight: 600 }}>LOCATION</th>
+                    <th style={{ padding: '12px 20px', color: 'var(--text-3)', fontWeight: 600 }}>BILL/PAY (MARGIN)</th>
+                    <th style={{ padding: '12px 20px', color: 'var(--text-3)', fontWeight: 600 }}>RECRUITERS</th>
+                    <th style={{ padding: '12px 20px', color: 'var(--text-3)', fontWeight: 600 }}>PIPELINE</th>
+                    <th style={{ padding: '12px 20px', color: 'var(--text-3)', fontWeight: 600, width: 80 }}>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredJobs.flatMap(job => {
+                    const client = clients.find(c => c.id === job.clientId);
+                    const isExpanded = expandedJobId === job.id;
+                    const jobApps = allApps.filter(a => a.jobId === job.id);
+                    
+                    return [
+                      <tr key={`row-${job.id}`} className="trow" style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--border)' }}>
+                        <td style={{ padding: '12px 20px' }}>
+                          <button 
+                            className="btn-icon" 
+                            style={{ width:24, height:24 }}
+                            onClick={() => setExpandedJobId(isExpanded ? null : job.id)}
+                          >
+                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                        </td>
+                        <td style={{ padding: '12px 20px' }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-4)' }}>
+                            {job.jobCode || `REQ-${job.id}`} {job.clientJobId && `· ${job.clientJobId}`}
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginTop: 2 }}>
+                            <Link to={`/jobs/${job.id}`} style={{ color: 'inherit', textDecoration: 'none' }} className="hover-underline">{job.title}</Link>
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 20px', fontWeight: 600, color: 'var(--text-2)' }}>
+                          {client?.name || 'Internal / Direct'}
+                        </td>
+                        <td style={{ padding: '12px 20px', color: 'var(--text-3)' }}>{job.location}</td>
+                        <td style={{ padding: '12px 20px' }}>
+                          <div style={{ color: 'var(--text-2)' }}>Bill: <strong>${job.billRate}/hr</strong> · Pay: <strong>${job.payRate}/hr</strong></div>
+                          <div style={{ fontSize: 11, color: 'var(--emerald)', fontWeight: 700, marginTop: 2 }}>
+                            ${job.billRate - job.payRate}/hr Margin
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 20px' }}>
+                          <div style={{ fontSize:12, color:'var(--text-2)' }}>Lead: {job.recruitmentManager}</div>
+                          <div style={{ fontSize:11, color:'var(--text-3)', marginTop:2 }}>Assigned: {job.primaryRecruiter}</div>
+                        </td>
+                        <td style={{ padding: '12px 20px', width: 140 }}>
+                          <PipelineFunnel jobId={job.id} />
+                          <div style={{ fontSize:11, color:'var(--text-3)', marginTop:4, fontWeight:600 }}>{jobApps.length} Candidates</div>
+                        </td>
+                        <td style={{ padding: '12px 20px' }}>{statusBadge(job.status)}</td>
+                      </tr>,
+                      /* Collapsible submittals row */
+                      isExpanded && (
+                        <tr key={`details-${job.id}`} style={{ background: 'rgba(0,0,0,0.1)' }}>
+                          <td colSpan={8} style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                                <h4 style={{ fontSize:12.5, fontWeight:700, color:'var(--text-2)', display:'flex', alignItems:'center', gap:6 }}>
+                                  <Users size={14} color="var(--primary)" /> APPLICANT SUBMITTALS PIPELINE
+                                </h4>
+                                <Link to={`/jobs/${job.id}`} style={{ fontSize:12, color:'var(--primary-light)', textDecoration:'none', fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+                                  Go to requirement workspace <ArrowRight size={13} />
+                                </Link>
+                              </div>
+                              
+                              {jobApps.length === 0 ? (
+                                <div style={{ padding:14, borderRadius:8, background:'rgba(255,255,255,0.01)', border:'1px dashed var(--border)', fontSize:12.5, color:'var(--text-3)', textAlign:'center' }}>
+                                  No candidates assigned to this requirement yet. Navigate to Candidate Command Center to search and match applicants.
+                                </div>
+                              ) : (
+                                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:10 }}>
+                                  {jobApps.map(app => (
+                                    <div key={app.id} style={{ padding:12, borderRadius:8, background:'var(--surface)', border:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                                      <div>
+                                        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-1)' }}>{app.candidateName || `Candidate #${app.candidateId}`}</div>
+                                        <div style={{ fontSize:11.5, color:'var(--text-3)', marginTop:2 }}>Score Match: <strong style={{ color:'var(--primary-light)' }}>{app.matchScore}%</strong></div>
+                                      </div>
+                                      <span style={{ fontSize:10.5, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(109,92,255,0.1)', color:'var(--primary-light)' }}>
+                                        {app.stage}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    ];
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )
       ) : (
         <div className="card empty-state anim-fade-up" style={{ padding:'80px 40px' }}>
           <Briefcase size={48} color="var(--primary-light)" style={{ marginBottom: 16 }} />
-          <p style={{ fontSize:18, fontWeight:700, color:'var(--text-1)' }}>No jobs here</p>
+          <p style={{ fontSize:18, fontWeight:700, color:'var(--text-1)' }}>No requirements found</p>
           <p style={{ fontSize:14, color: 'var(--text-3)', marginTop: 4 }}>
-            {tab !== 'All' ? `No ${tab.toLowerCase()} jobs found.` : 'Create your first job posting to get started.'}
+            {tab !== 'All' ? `No ${tab.toLowerCase()} requirements found.` : 'Create your first client requirement to get started.'}
           </p>
           {tab === 'All' && (
             <button className="btn btn-primary" onClick={()=>setShowDrawer(true)} style={{ marginTop:24, padding: '10px 24px' }}>
-              <Plus size={16} /> Create Job
+              <Plus size={16} /> Post Requirement
             </button>
           )}
         </div>
@@ -360,64 +416,95 @@ export default function JobsView() {
       {showDrawer && (
         <>
           <div className="overlay" onClick={()=>setShowDrawer(false)} />
-          <div className="drawer">
+          <div className="drawer" style={{ width:500 }}>
             <div style={{ padding:'22px 24px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <div>
                 <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:17, color:'var(--text-1)' }}>
-                  Create New Job
+                  New Requirement
                 </h2>
-                <p style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>Fill in the details to post a new position</p>
+                <p style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>Fill details to initialize job order</p>
               </div>
               <button className="btn-icon" onClick={()=>setShowDrawer(false)}><X size={17} /></button>
             </div>
 
             <form onSubmit={handleCreate} style={{ flex:1, padding:24, display:'flex', flexDirection:'column', gap:18, overflowY: 'auto' }}>
               <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.03em' }}>
-                  JOB TITLE *
-                </label>
+                <label className="label">JOB TITLE *</label>
                 <input className="input" placeholder="e.g. Senior Frontend Engineer" required value={newJob.title} onChange={e=>setNewJob({...newJob, title:e.target.value})} />
               </div>
 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
                 <div>
-                  <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.03em' }}>DEPARTMENT *</label>
+                  <label className="label">JOB CODE *</label>
+                  <input className="input" placeholder="REQ-101" required value={newJob.jobCode} onChange={e=>setNewJob({...newJob, jobCode:e.target.value})} />
+                </div>
+                <div>
+                  <label className="label">CLIENT JOB ID</label>
+                  <input className="input" placeholder="CJ-0012" value={newJob.clientJobId} onChange={e=>setNewJob({...newJob, clientJobId:e.target.value})} />
+                </div>
+              </div>
+
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+                <div>
+                  <label className="label">DEPARTMENT *</label>
                   <input className="input" placeholder="Engineering" required value={newJob.department} onChange={e=>setNewJob({...newJob, department:e.target.value})} />
                 </div>
                 <div>
-                  <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.03em' }}>LOCATION *</label>
+                  <label className="label">LOCATION *</label>
                   <input className="input" placeholder="Remote / City, State" required value={newJob.location} onChange={e=>setNewJob({...newJob, location:e.target.value})} />
                 </div>
               </div>
 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
                 <div>
-                  <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.03em' }}>SALARY RANGE</label>
-                  <input className="input" placeholder="$100k – $130k" value={newJob.salaryRange} onChange={e=>setNewJob({...newJob, salaryRange:e.target.value})} />
+                  <label className="label">BILL RATE ($/HR) *</label>
+                  <input type="number" className="input" placeholder="120" required value={newJob.billRate} onChange={e=>setNewJob({...newJob, billRate:e.target.value})} />
                 </div>
                 <div>
-                  <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.03em' }}>CLIENT</label>
-                  <select className="input" value={newJob.clientId} onChange={e=>setNewJob({...newJob, clientId:e.target.value})} style={{ background: 'rgba(255,255,255,0.03)' }}>
-                    <option value="">-- Internal / None --</option>
+                  <label className="label">PAY RATE ($/HR) *</label>
+                  <input type="number" className="input" placeholder="85" required value={newJob.payRate} onChange={e=>setNewJob({...newJob, payRate:e.target.value})} />
+                </div>
+              </div>
+
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+                <div>
+                  <label className="label">SALARY ANNUM RANGE</label>
+                  <input className="input" placeholder="$120k – $150k" value={newJob.salaryRange} onChange={e=>setNewJob({...newJob, salaryRange:e.target.value})} />
+                </div>
+                <div>
+                  <label className="label">CLIENT ACCOUNT *</label>
+                  <select className="input" required value={newJob.clientId} onChange={e=>setNewJob({...newJob, clientId:e.target.value})} style={{ background: 'var(--surface-2)' }}>
+                    <option value="">Select client...</option>
                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
               </div>
 
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+                <div>
+                  <label className="label">RECRUITMENT MANAGER</label>
+                  <input className="input" value={newJob.recruitmentManager} onChange={e=>setNewJob({...newJob, recruitmentManager:e.target.value})} />
+                </div>
+                <div>
+                  <label className="label">PRIMARY RECRUITER</label>
+                  <input className="input" value={newJob.primaryRecruiter} onChange={e=>setNewJob({...newJob, primaryRecruiter:e.target.value})} />
+                </div>
+              </div>
+
               <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.03em' }}>REQUIRED SKILLS (COMMA SEPARATED)</label>
+                <label className="label">REQUIRED SKILLS (COMMA SEPARATED)</label>
                 <input className="input" placeholder="React, C#, SQL, Kubernetes" value={newJob.requiredSkillsJson} onChange={e=>setNewJob({...newJob, requiredSkillsJson:e.target.value})} />
               </div>
 
               <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.03em' }}>DESCRIPTION *</label>
-                <textarea className="input" placeholder="What does this role entail?" required rows={5} style={{ resize:'vertical', lineHeight:1.6 }} value={newJob.description} onChange={e=>setNewJob({...newJob, description:e.target.value})} />
+                <label className="label">DESCRIPTION *</label>
+                <textarea className="input" placeholder="Job description guidelines..." required rows={4} style={{ resize:'vertical', lineHeight:1.6 }} value={newJob.description} onChange={e=>setNewJob({...newJob, description:e.target.value})} />
               </div>
 
               <div style={{ display:'flex', gap:10, marginTop:'auto', paddingTop:8 }}>
                 <button type="button" className="btn btn-ghost" style={{ flex:1 }} onClick={()=>setShowDrawer(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" style={{ flex:2 }} disabled={saving}>
-                  {saving ? 'Creating...' : 'Create Job'}
+                  {saving ? 'Creating...' : 'Initialize Requirement'}
                 </button>
               </div>
             </form>
