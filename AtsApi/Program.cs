@@ -33,6 +33,13 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
+// Automatically apply EF migrations and seed data on startup
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AtsDbContext>();
+    dbContext.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
