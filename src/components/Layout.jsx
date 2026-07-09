@@ -9,11 +9,14 @@ import KanbanView from '../pages/KanbanView.jsx';
 import SettingsView from '../pages/SettingsView.jsx';
 import ClientsView from '../pages/ClientsView.jsx';
 import JobWorkspace from '../pages/JobWorkspace.jsx';
+import PlacementsView from '../pages/PlacementsView.jsx';
+import { ArrowRightLeft } from 'lucide-react';
 
 const PAGE_TITLES = {
   '/': 'Dashboard',
   '/jobs': 'Jobs',
   '/candidates': 'Candidates',
+  '/placements': 'Pipeline & Placements',
   '/clients': 'Clients',
   '/settings': 'Settings',
 };
@@ -22,6 +25,7 @@ const NAV = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/', exact: true },
   { label: 'Jobs',      icon: Briefcase,       path: '/jobs' },
   { label: 'Candidates',icon: Users,           path: '/candidates' },
+  { label: 'Placements',icon: ArrowRightLeft,  path: '/placements' },
   { label: 'Clients',   icon: Building2,       path: '/clients' },
 ];
 
@@ -286,6 +290,7 @@ export default function Layout() {
               <Route path="/jobs"                   element={<JobsView />} />
               <Route path="/jobs/:id/*"             element={<JobWorkspace />} />
               <Route path="/candidates"             element={<CandidatesView />} />
+              <Route path="/placements"             element={<PlacementsView />} />
               {!isRecruiter && <Route path="/clients"                element={<ClientsView />} />}
               {!isRecruiter && <Route path="/settings"               element={<SettingsView />} />}
             </Routes>

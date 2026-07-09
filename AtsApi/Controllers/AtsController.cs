@@ -359,6 +359,34 @@ public class AtsController : ControllerBase
         return Ok(submittals);
     }
 
+    [HttpGet("submittals")]
+    public async Task<ActionResult> GetSubmittals()
+    {
+        var submittals = await _context.Submittals
+            .Include(s => s.Candidate)
+            .Include(s => s.Job)
+                .ThenInclude(j => j!.Client)
+            .Select(s => new {
+                s.Id,
+                s.Status,
+                s.Summary,
+                s.CreatedAt,
+                CandidateName = s.Candidate != null ? s.Candidate.Name : "Unknown",
+                CandidateEmail = s.Candidate != null ? s.Candidate.Email : "",
+                CandidatePhone = s.Candidate != null ? s.Candidate.Phone : "",
+                JobTitle = s.Job != null ? s.Job.Title : "Unknown",
+                JobCode = s.Job != null ? s.Job.JobCode : "N/A",
+                ClientJobId = s.Job != null ? s.Job.ClientJobId : "N/A",
+                ClientName = s.Job != null && s.Job.Client != null ? s.Job.Client.Name : "Internal",
+                PrimaryRecruiter = s.Job != null ? s.Job.PrimaryRecruiter : "Aazam Qureshi",
+                RecruitmentManager = s.Job != null ? s.Job.RecruitmentManager : "Aazam Qureshi"
+            })
+            .OrderByDescending(s => s.CreatedAt)
+            .ToListAsync();
+            
+        return Ok(submittals);
+    }
+
     [HttpPost("submittals")]
     public async Task<ActionResult> CreateSubmittal(Submittal submittal)
     {
@@ -426,6 +454,33 @@ public class AtsController : ControllerBase
         
         await _context.SaveChangesAsync();
         return Ok(placement);
+    }
+
+    [HttpGet("placements")]
+    public async Task<ActionResult> GetPlacements()
+    {
+        var placements = await _context.Placements
+            .Include(p => p.Application)
+                .ThenInclude(a => a!.Candidate)
+            .Include(p => p.Application)
+                .ThenInclude(a => a!.Job)
+                    .ThenInclude(j => j!.Client)
+            .Select(p => new {
+                p.Id,
+                p.StartDate,
+                p.PayRate,
+                p.BillRate,
+                p.GrossMargin,
+                p.CreatedAt,
+                CandidateName = p.Application != null && p.Application.Candidate != null ? p.Application.Candidate.Name : "Unknown",
+                JobTitle = p.Application != null && p.Application.Job != null ? p.Application.Job.Title : "Unknown",
+                JobCode = p.Application != null && p.Application.Job != null ? p.Application.Job.JobCode : "N/A",
+                ClientName = p.Application != null && p.Application.Job != null && p.Application.Job.Client != null ? p.Application.Job.Client.Name : "Internal"
+            })
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        return Ok(placements);
     }
 
     // -- JOB STATUS TOGGLE --
