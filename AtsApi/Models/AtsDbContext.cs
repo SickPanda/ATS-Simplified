@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace AtsApi.Models;
 
-public class AtsDbContext : DbContext
+public class AtsDbContext : IdentityDbContext<IdentityUser>
 {
     public AtsDbContext(DbContextOptions<AtsDbContext> options) : base(options) { }
 
@@ -24,6 +26,8 @@ public class AtsDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         // Seed Initial Data
         modelBuilder.Entity<User>().HasData(
             new User { Id = 1, Name = "Admin User", Email = "admin@atspro.com", Password = "password123", Role = "Admin" },

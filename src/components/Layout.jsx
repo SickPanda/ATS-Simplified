@@ -35,7 +35,7 @@ const BOTTOM_NAV = [
 ];
 
 function Sidebar({ user, logout }) {
-  const isRecruiter = user?.role === 'Recruiter';
+  const isRecruiter = user?.roles?.includes('Recruiter');
 
   return (
     <aside style={{
@@ -162,7 +162,10 @@ function Topbar({ user }) {
     fetch('/api/ats/notifications')
       .then(r => r.json())
       .then(d => {
-        setNotifications(d.filter(n => n.roleToNotify?.toLowerCase() === user.role?.toLowerCase() || n.roleToNotify === 'Admin'));
+        setNotifications(d.filter(n => {
+          const target = n.roleToNotify?.toLowerCase();
+          return user.roles?.some(r => r.toLowerCase() === target) || target === 'admin';
+        }));
       })
       .catch(console.error);
   }, [user]);
@@ -274,7 +277,7 @@ export default function Layout() {
   if (loading) return null;
   if (!user) return <LoginView />;
 
-  const isRecruiter = user.role === 'Recruiter';
+  const isRecruiter = user.roles?.includes('Recruiter');
 
   return (
     <Router>

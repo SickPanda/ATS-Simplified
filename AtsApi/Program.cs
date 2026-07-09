@@ -1,5 +1,6 @@
 using AtsApi.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,17 @@ builder.Services.AddOpenApi();
 // Register SQLite Database
 builder.Services.AddDbContext<AtsDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Register Identity
+builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => {
+    options.Password.RequireDigit = false;
+    options.Password.RequiredLength = 6;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireLowercase = false;
+})
+.AddEntityFrameworkStores<AtsDbContext>()
+.AddDefaultTokenProviders();
 
 // Register JWT Authentication
 var key = System.Text.Encoding.ASCII.GetBytes(builder.Configuration["Jwt:Key"] ?? "super_secret_key_that_is_long_enough_for_hs256_at_least_32_chars");
@@ -38,6 +50,24 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AtsDbContext>();
     dbContext.Database.Migrate();
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+
+    if (!await roleManager.RoleExistsAsync("Admin"))
+        await roleManager.CreateAsync(new IdentityRole("Admin"));
+    if (!await roleManager.RoleExistsAsync("Recruiter"))
+        await roleManager.CreateAsync(new IdentityRole("Recruiter"));
+
+    if (await userManager.FindByEmailAsync("aazam.qureshi@sysazzle.com") == null)
+    {
+        var adminUser = new IdentityUser { UserName = "aazam.qureshi@sysazzle.com", Email = "aazam.qureshi@sysazzle.com" };
+        var result = await userManager.CreateAsync(adminUser, "Recruiter@111*");
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
+    }
 }
 
 // Configure the HTTP request pipeline.
