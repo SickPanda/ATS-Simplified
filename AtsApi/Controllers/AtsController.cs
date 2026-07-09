@@ -317,9 +317,28 @@ public class AtsController : ControllerBase
     public async Task<ActionResult<Client>> CreateClient(Client client)
     {
         client.CreatedAt = DateTime.UtcNow;
+        if (string.IsNullOrEmpty(client.ContactsJson)) client.ContactsJson = "[]";
         _context.Clients.Add(client);
         await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(GetClients), new { id = client.Id }, client);
+    }
+
+    [HttpPut("clients/{id}")]
+    public async Task<IActionResult> UpdateClient(int id, Client client)
+    {
+        if (id != client.Id) return BadRequest();
+        if (string.IsNullOrEmpty(client.ContactsJson)) client.ContactsJson = "[]";
+        _context.Entry(client).State = EntityState.Modified;
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!_context.Clients.Any(c => c.Id == id)) return NotFound();
+            throw;
+        }
+        return NoContent();
     }
 
     // -- SUBMITTALS --

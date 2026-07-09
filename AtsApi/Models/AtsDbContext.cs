@@ -38,7 +38,13 @@ public class AtsDbContext : DbContext
                 Industry = "Technology",
                 ContactEmail = "hr@acmecorp.com",
                 Phone = "555-0100",
-                Location = "San Francisco, CA"
+                Location = "San Francisco, CA",
+                Website = "https://acme.com",
+                PrimaryOwner = "Aazam Qureshi",
+                FederalId = "12-3456789",
+                PaymentTerms = "Net 30",
+                AboutCompany = "Global leader in product manufacturing and tech services.",
+                ContactsJson = "[{\"Name\":\"John Doe\",\"Email\":\"jdoe@acme.com\",\"Phone\":\"555-0111\",\"Title\":\"HR Manager\"}]"
             },
             new Client
             {
@@ -47,7 +53,13 @@ public class AtsDbContext : DbContext
                 Industry = "Manufacturing",
                 ContactEmail = "talent@globex.com",
                 Phone = "555-0200",
-                Location = "Chicago, IL"
+                Location = "Chicago, IL",
+                Website = "https://globex.com",
+                PrimaryOwner = "Aazam Qureshi",
+                FederalId = "98-7654321",
+                PaymentTerms = "Net 45",
+                AboutCompany = "International industrial equipment supplier.",
+                ContactsJson = "[]"
             }
         );
 
