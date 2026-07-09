@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Building2, Plus, Search, Mail, Phone, MapPin, X, FileText, Send, Globe, Landmark, CreditCard, User, Users, PlusCircle, Trash2 } from 'lucide-react';
 
 export default function ClientsView() {
+  const navigate = useNavigate();
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState('');
   const [showDrawer, setShowDrawer] = useState(false);
@@ -66,12 +68,8 @@ export default function ClientsView() {
     } catch(err) { console.error(err); }
   };
 
-  const openClientDetails = async (client) => {
-    setSelectedClient(client);
-    try {
-      const res = await fetch(`/api/ats/clients/${client.id}/submittals`);
-      if (res.ok) setSubmittals(await res.json());
-    } catch (e) { console.error(e); }
+  const openClientDetails = (client) => {
+    navigate(`/clients/${client.id}`);
   };
 
   const handleAddContact = async (e) => {
@@ -329,178 +327,6 @@ export default function ClientsView() {
         </>
       )}
 
-      {/* Client Details Drawer */}
-      {selectedClient && (
-        <>
-          <div className="overlay" onClick={()=>setSelectedClient(null)} />
-          <div className="drawer" style={{ width: 850, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding:'24px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
-              <div style={{ display:'flex', gap:16, alignItems:'center' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Building2 size={24} color="var(--primary)" />
-                </div>
-                <div>
-                  <h3 style={{ fontSize:18, fontWeight:700, color:'var(--text-1)' }}>{selectedClient.name}</h3>
-                  <div style={{ display: 'flex', gap: 12, marginTop: 4, flexWrap:'wrap' }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <MapPin size={12}/> {selectedClient.location || 'No Location'}
-                    </span>
-                    {selectedClient.website && (
-                      <span style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Globe size={12}/> 
-                        <a href={selectedClient.website} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-light)', textDecoration:'none' }}>
-                          {selectedClient.website}
-                        </a>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <button type="button" className="btn-icon" onClick={()=>setSelectedClient(null)}><X size={16} /></button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', minHeight: 0 }}>
-              {/* Left Column: Corporate Profile Info */}
-              <div style={{ flex: 1, padding: 24, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div>
-                  <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.05em', marginBottom: 12 }}>
-                    CORPORATE PROFILE
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'rgba(255,255,255,0.02)', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
-                      <strong>Industry:</strong> <span style={{ color: 'var(--text-1)' }}>{selectedClient.industry}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
-                      <strong>Client Lead:</strong> <span style={{ color: 'var(--text-1)' }}>{selectedClient.primaryOwner || 'Unassigned'}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
-                      <strong>Federal Tax ID:</strong> <span style={{ color: 'var(--text-1)' }}>{selectedClient.federalId || 'Not Specified'}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
-                      <strong>Payment Terms:</strong> <span style={{ color: 'var(--text-1)' }}>{selectedClient.paymentTerms || 'Net 30'}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
-                      <strong>Main Phone:</strong> <span style={{ color: 'var(--text-1)' }}>{selectedClient.phone || 'N/A'}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
-                      <strong>Main Email:</strong> <span style={{ color: 'var(--text-1)' }}>{selectedClient.contactEmail || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedClient.aboutCompany && (
-                  <div>
-                    <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.05em', marginBottom: 8 }}>
-                      ABOUT COMPANY
-                    </h4>
-                    <p style={{ fontSize: 12.5, color: 'var(--text-3)', lineHeight: 1.6, background: 'rgba(255,255,255,0.02)', padding: 14, borderRadius: 12, border: '1px solid var(--border)', margin: 0 }}>
-                      {selectedClient.aboutCompany}
-                    </p>
-                  </div>
-                )}
-
-                {/* Submittals Section */}
-                <div style={{ marginTop: 'auto' }}>
-                  <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.05em', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Send size={14} color="var(--primary)" /> PIPELINE SUBMITTALS ({submittals.length})
-                  </h4>
-                  
-                  {submittals.length === 0 ? (
-                    <div className="empty-state" style={{ padding: 20 }}>
-                      <p style={{ fontSize:12.5 }}>No candidates submitted yet.</p>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto' }}>
-                      {submittals.map(s => (
-                        <div key={s.id} style={{
-                          padding: 10, borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)',
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                        }}>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{s.candidateName}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>For: {s.jobTitle}</div>
-                          </div>
-                          <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(109,92,255,0.1)', color: 'var(--primary-light)', fontWeight: 600 }}>
-                            {s.status}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Column: Contact Directory */}
-              <div style={{ flex: 1, padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div>
-                  <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.05em', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Users size={14} color="var(--primary)" /> CONTACT DIRECTORY
-                  </h4>
-
-                  {/* List of Contacts */}
-                  {(() => {
-                    let parsedContacts = [];
-                    try {
-                      parsedContacts = JSON.parse(selectedClient.contactsJson || '[]');
-                    } catch (e) { parsedContacts = []; }
-
-                    if (parsedContacts.length === 0) {
-                      return (
-                        <div className="empty-state" style={{ padding: '20px 0' }}>
-                          <p style={{ fontSize: 12.5 }}>No additional corporate contacts stored.</p>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-                        {parsedContacts.map((contact, idx) => (
-                          <div key={idx} style={{
-                            padding: 12, borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)',
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                          }}>
-                            <div>
-                              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-1)' }}>{contact.Name}</div>
-                              <div style={{ fontSize: 12, color: 'var(--primary-light)', marginTop: 2 }}>{contact.Title}</div>
-                              <div style={{ display:'flex', gap:10, marginTop: 4, fontSize:11.5, color:'var(--text-3)' }}>
-                                <span>{contact.Email}</span>
-                                {contact.Phone && <span>• {contact.Phone}</span>}
-                              </div>
-                            </div>
-                            <button type="button" className="btn-icon" title="Remove Contact" onClick={() => handleDeleteContact(idx)}>
-                              <Trash2 size={13} color="var(--rose)" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Add New Contact Form */}
-                <div style={{ marginTop: 'auto', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border)', padding: 16, borderRadius: 12 }}>
-                  <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <PlusCircle size={13} color="var(--primary)" /> Add Directory Contact
-                  </h5>
-                  <form onSubmit={handleAddContact} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <input className="input text-xs" style={{ height: 32 }} required placeholder="Contact Name" value={contactName} onChange={e=>setContactName(e.target.value)} />
-                      <input className="input text-xs" style={{ height: 32 }} placeholder="Title (e.g. HR Manager)" value={contactTitle} onChange={e=>setContactTitle(e.target.value)} />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <input type="email" className="input text-xs" style={{ height: 32 }} placeholder="Email Address" value={contactEmail} onChange={e=>setContactEmail(e.target.value)} />
-                      <input className="input text-xs" style={{ height: 32 }} placeholder="Direct Phone" value={contactPhone} onChange={e=>setContactPhone(e.target.value)} />
-                    </div>
-                    <button type="submit" className="btn btn-primary btn-sm" style={{ height: 32, fontSize:12 }}>
-                      Add Contact to Directory
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }

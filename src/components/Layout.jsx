@@ -9,6 +9,7 @@ import KanbanView from '../pages/KanbanView.jsx';
 import SettingsView from '../pages/SettingsView.jsx';
 import ClientsView from '../pages/ClientsView.jsx';
 import JobWorkspace from '../pages/JobWorkspace.jsx';
+import ClientWorkspace from '../pages/ClientWorkspace.jsx';
 import PlacementsView from '../pages/PlacementsView.jsx';
 import { ArrowRightLeft } from 'lucide-react';
 
@@ -289,7 +290,12 @@ export default function Layout() {
               <Route path="/candidates"             element={<CandidatesView />} />
               <Route path="/placements"             element={<PlacementsView />} />
               <Route path="/settings"               element={<SettingsView />} />
-              {!isRecruiter && <Route path="/clients" element={<ClientsView />} />}
+              {!isRecruiter && (
+                <>
+                  <Route path="/clients" element={<ClientsView />} />
+                  <Route path="/clients/:id/*" element={<ClientWorkspace />} />
+                </>
+              )}
             </Routes>
           </main>
         </div>
