@@ -21,6 +21,35 @@ public class AuthController : ControllerBase
         _config = config;
     }
 
+    [HttpGet("debug-db")]
+    public async Task<IActionResult> DebugDb()
+    {
+        try
+        {
+            var userCount = await _context.Users.CountAsync();
+            var users = await _context.Users.Select(u => new { u.Id, u.Email, u.Role }).ToListAsync();
+            var pendingMigrations = await _context.Database.GetPendingMigrationsAsync();
+            var appliedMigrations = await _context.Database.GetAppliedMigrationsAsync();
+            return Ok(new {
+                Success = true,
+                UserCount = userCount,
+                Users = users,
+                PendingMigrations = pendingMigrations,
+                AppliedMigrations = appliedMigrations,
+                DatabasePath = _context.Database.GetConnectionString()
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new {
+                Success = false,
+                Message = ex.Message,
+                StackTrace = ex.StackTrace,
+                InnerException = ex.InnerException?.Message
+            });
+        }
+    }
+
     public class LoginRequest
     {
         public string Email { get; set; } = string.Empty;
