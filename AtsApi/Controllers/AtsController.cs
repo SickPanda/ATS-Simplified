@@ -507,7 +507,7 @@ public class AtsController : ControllerBase
         if (string.IsNullOrEmpty(apiKey)) apiKey = _configuration["GeminiApiKey"];
         if (string.IsNullOrEmpty(apiKey)) return BadRequest("Missing Gemini API Key");
 
-        var prompt = "Extract candidate details from this raw text into JSON: { \"Name\": \"\", \"Email\": \"\", \"Phone\": \"\", \"Role\": \"\", \"Experience\": \"\", \"Education\": \"\", \"Skills\": [\"string\"] }. Return ONLY raw JSON.\n\n" + req.RawText;
+        var prompt = "Extract candidate details from this raw text into JSON: { \"Name\": \"\", \"Email\": \"\", \"Phone\": \"\", \"Role\": \"\", \"Experience\": \"\", \"Education\": \"\", \"City\": \"\", \"State\": \"\", \"WorkAuthorization\": \"\", \"Skills\": [\"string\"] }. Return ONLY raw JSON.\n\n" + req.RawText;
         
         var json = await CallGeminiAsync(prompt, apiKey);
         if (string.IsNullOrEmpty(json)) return StatusCode(500, "Parse failed");
@@ -523,6 +523,12 @@ public class AtsController : ControllerBase
                 Role = root.TryGetProperty("Role", out var r) ? r.GetString() : "",
                 Experience = root.TryGetProperty("Experience", out var ex) ? ex.GetString() : "",
                 Education = root.TryGetProperty("Education", out var edu) ? edu.GetString() : "",
+                City = root.TryGetProperty("City", out var ct) ? ct.GetString() ?? "" : "",
+                State = root.TryGetProperty("State", out var st) ? st.GetString() ?? "" : "",
+                WorkAuthorization = root.TryGetProperty("WorkAuthorization", out var wa) ? wa.GetString() ?? "US Citizen" : "US Citizen",
+                Source = "Quick Parse",
+                Status = "Active",
+                Ownership = "Aazam Qureshi",
                 SkillsJson = root.TryGetProperty("Skills", out var sk) ? sk.GetRawText() : "[]",
                 CreatedAt = DateTime.UtcNow
             };

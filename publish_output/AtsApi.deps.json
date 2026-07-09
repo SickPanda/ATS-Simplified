@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v9.0": {
-      "AtsApi/1.4.9": {
+      "AtsApi/1.5.1": {
         "dependencies": {
           "DocumentFormat.OpenXml": "3.5.1",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "9.0.0",
@@ -1214,7 +1214,7 @@
     }
   },
   "libraries": {
-    "AtsApi/1.4.9": {
+    "AtsApi/1.5.1": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

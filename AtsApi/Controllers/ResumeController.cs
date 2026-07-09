@@ -163,6 +163,9 @@ Respond ONLY with a valid JSON object matching this schema. Do NOT use markdown 
   ""Email"": """",
   ""Phone"": """",
   ""Education"": """",
+  ""City"": """",
+  ""State"": """",
+  ""WorkAuthorization"": """",
   ""Skills"": [""skill1"", ""skill2""]
 }";
 
@@ -226,6 +229,12 @@ Respond ONLY with a valid JSON object matching this schema. Do NOT use markdown 
                             Email = data.RootElement.TryGetProperty("Email", out var em) ? em.GetString() ?? "Unknown" : "Unknown",
                             Phone = data.RootElement.TryGetProperty("Phone", out var p) ? p.GetString() ?? "Unknown" : "Unknown",
                             Education = data.RootElement.TryGetProperty("Education", out var ed) ? ed.GetString() ?? "Unknown" : "Unknown",
+                            City = data.RootElement.TryGetProperty("City", out var ct) ? ct.GetString() ?? "Unknown" : "Unknown",
+                            State = data.RootElement.TryGetProperty("State", out var st) ? st.GetString() ?? "Unknown" : "Unknown",
+                            WorkAuthorization = data.RootElement.TryGetProperty("WorkAuthorization", out var wa) ? wa.GetString() ?? "US Citizen" : "US Citizen",
+                            Source = "Resume Parser",
+                            Status = "Active",
+                            Ownership = "Aazam Qureshi",
                             SkillsJson = data.RootElement.TryGetProperty("Skills", out var skills) ? skills.GetRawText() : "[]"
                         };
                     }
