@@ -3,35 +3,38 @@
 
 
 :root {
-  --bg: #0f111a;
-  --surface: #16192b;
-  --surface-2: #1e2238;
-  --surface-3: #262b45;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.16);
-  --border-active: rgba(109, 92, 255, 0.35);
+  /* Coffee dark backgrounds */
+  --bg: #100c09;
+  --surface: #1a1310;
+  --surface-2: #221a15;
+  --surface-3: #2d2018;
+  --border: rgba(255, 200, 170, 0.08);
+  --border-hover: rgba(255, 200, 170, 0.16);
+  --border-active: rgba(220, 60, 60, 0.35);
 
-  --primary: #6d5cff;
-  --primary-dark: #5647d9;
-  --primary-light: #8b7fff;
-  --primary-glow: rgba(109, 92, 255, 0.15);
-  --primary-glow-strong: rgba(109, 92, 255, 0.3);
+  /* Strawberry red primary */
+  --primary: #dc3d3d;
+  --primary-dark: #b52e2e;
+  --primary-light: #f06464;
+  --primary-glow: rgba(220, 61, 61, 0.15);
+  --primary-glow-strong: rgba(220, 61, 61, 0.32);
 
-  --cyan: #22d3ee;
-  --cyan-glow: rgba(34, 211, 238, 0.12);
-  --emerald: #10b981;
-  --emerald-glow: rgba(16, 185, 129, 0.12);
-  --amber: #f59e0b;
-  --amber-glow: rgba(245, 158, 11, 0.12);
-  --rose: #f43f5e;
-  --rose-glow: rgba(244, 63, 94, 0.12);
-  --violet: #a78bfa;
-  --violet-glow: rgba(167, 139, 250, 0.12);
+  /* Coffee accent tones */
+  --cyan: #c4824a;         /* warm coffee amber */
+  --cyan-glow: rgba(196, 130, 74, 0.12);
+  --emerald: #6ab187;      /* muted sage green */
+  --emerald-glow: rgba(106, 177, 135, 0.12);
+  --amber: #e8a838;        /* caramel amber */
+  --amber-glow: rgba(232, 168, 56, 0.12);
+  --rose: #f4613e;         /* tomato rose */
+  --rose-glow: rgba(244, 97, 62, 0.12);
+  --violet: #c47e6e;       /* dusty rose mocha */
+  --violet-glow: rgba(196, 126, 110, 0.12);
 
-  --text-1: #e2e8f0;
-  --text-2: #94a3b8;
-  --text-3: #475569;
-  --text-4: #2d3748;
+  --text-1: #f0e6df;
+  --text-2: #a8897a;
+  --text-3: #6b4f42;
+  --text-4: #3d2e28;
 
   --sidebar-width: 228px;
   --topbar-height: 58px;
@@ -57,9 +60,9 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--bg);
   background-image: 
-    radial-gradient(circle at var(--bg-x, 15%) var(--bg-y, 50%), rgba(109, 92, 255, 0.18), transparent 35%),
-    radial-gradient(circle at var(--bg-x2, 85%) var(--bg-y2, 30%), rgba(34, 211, 238, 0.15), transparent 35%),
-    radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.08), transparent 30%);
+    radial-gradient(circle at 15% 50%, rgba(220, 61, 61, 0.16), transparent 35%),
+    radial-gradient(circle at 85% 30%, rgba(196, 130, 74, 0.13), transparent 35%),
+    radial-gradient(circle at 50% 80%, rgba(106, 177, 135, 0.07), transparent 30%);
   background-attachment: fixed;
   background-size: 200% 200%;
   animation: gradientShift 20s ease-in-out infinite;
@@ -153,37 +156,37 @@ body {
 }
 
 .glass {
-  background: rgba(22, 25, 43, 0.6);
+  background: rgba(26, 19, 16, 0.6);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 200, 170, 0.08);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
 /* ─── Cards ─────────────────────────────────── */
 .card {
-  background: rgba(22, 25, 43, 0.75);
+  background: rgba(26, 19, 16, 0.80);
   backdrop-filter: blur(24px) saturate(1.5);
   -webkit-backdrop-filter: blur(24px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 200, 170, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
   border-radius: var(--radius-lg);
   transition: all var(--t-fast);
 }
 
 .card-lift {
-  background: rgba(22, 25, 43, 0.75);
+  background: rgba(26, 19, 16, 0.80);
   backdrop-filter: blur(24px) saturate(1.5);
   -webkit-backdrop-filter: blur(24px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 200, 170, 0.06);
   border-radius: var(--radius-lg);
   transition: all var(--t-base);
   cursor: pointer;
 }
 .card-lift:hover {
-  border-color: var(--border-hover);
+  border-color: rgba(255, 200, 170, 0.16);
   transform: translateY(-3px);
-  box-shadow: 0 16px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,200,170,0.06);
 }
 
 /* ─── Sidebar Navigation ────────────────────── */
@@ -208,7 +211,7 @@ body {
 .nav-link.active {
   background: var(--primary-glow);
   color: var(--primary-light);
-  border-color: rgba(109,92,255,0.2);
+  border-color: rgba(220,61,61,0.25);
 }
 .nav-link .nav-icon { opacity: 0.7; flex-shrink: 0; }
 .nav-link.active .nav-icon { opacity: 1; }
@@ -356,10 +359,10 @@ body {
   position: fixed;
   top: 0; right: 0; bottom: 0;
   width: 460px;
-  background: rgba(22, 25, 43, 0.85);
+  background: rgba(26, 19, 16, 0.88);
   backdrop-filter: blur(30px) saturate(1.8);
   -webkit-backdrop-filter: blur(30px) saturate(1.8);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid rgba(255, 200, 170, 0.1);
   box-shadow: -10px 0 40px rgba(0,0,0,0.5);
   z-index: 51;
   animation: slideRight 0.32s var(--ease-spring);
@@ -470,9 +473,46 @@ body {
 }
 .kanban-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(109, 92, 255, 0.4) !important;
-  box-shadow: 0 8px 24px rgba(109, 92, 255, 0.12) !important;
+  border-color: rgba(220, 61, 61, 0.4) !important;
+  box-shadow: 0 8px 24px rgba(220, 61, 61, 0.12) !important;
 }
 .kanban-card:active {
   cursor: grabbing;
+}
+
+/* ─── KPI Card ──────────────────────────────── */
+.kpi-card {
+  padding: 18px 20px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kpi-icon {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.kpi-val {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-1);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.kpi-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: 0.03em;
+}
+.label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
 }

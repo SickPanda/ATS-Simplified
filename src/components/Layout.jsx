@@ -94,24 +94,21 @@ function Sidebar({ user, logout }) {
           );
         })}
 
-        {!isRecruiter && (
-          <>
-            <div style={{ height: 1, background: 'var(--border)', margin: '12px 4px 10px' }} />
-            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-4)', letterSpacing: '0.08em', padding: '0 6px', marginBottom: 6 }}>
-              ADMINISTRATION
-            </div>
-            {BOTTOM_NAV.map(({ label, icon: Icon, path }) => (
-              <NavLink
-                key={path}
-                to={path}
-                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-              >
-                <Icon size={15} className="nav-icon" />
-                {label}
-              </NavLink>
-            ))}
-          </>
-        )}
+        {/* Settings always visible for all roles */}
+        <div style={{ height: 1, background: 'var(--border)', margin: '12px 4px 10px' }} />
+        <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-4)', letterSpacing: '0.08em', padding: '0 6px', marginBottom: 6 }}>
+          WORKSPACE
+        </div>
+        {BOTTOM_NAV.map(({ label, icon: Icon, path }) => (
+          <NavLink
+            key={path}
+            to={path}
+            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+          >
+            <Icon size={15} className="nav-icon" />
+            {label}
+          </NavLink>
+        ))}
       </nav>
 
       {/* User */}
@@ -291,8 +288,8 @@ export default function Layout() {
               <Route path="/jobs/:id/*"             element={<JobWorkspace />} />
               <Route path="/candidates"             element={<CandidatesView />} />
               <Route path="/placements"             element={<PlacementsView />} />
-              {!isRecruiter && <Route path="/clients"                element={<ClientsView />} />}
-              {!isRecruiter && <Route path="/settings"               element={<SettingsView />} />}
+              <Route path="/settings"               element={<SettingsView />} />
+              {!isRecruiter && <Route path="/clients" element={<ClientsView />} />}
             </Routes>
           </main>
         </div>
