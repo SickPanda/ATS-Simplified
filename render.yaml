@@ -1,11 +1,15 @@
 services:
   - type: web
-    name: ats-backend
-    env: docker
-    dockerContext: AtsApi
-    dockerfilePath: AtsApi/Dockerfile
+    name: ats-pro-api
+    runtime: docker
+    dockerfilePath: ./AtsApi/Dockerfile
+    dockerContext: ./AtsApi
+    plan: free
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: ConnectionStrings__DefaultConnection
-        value: "Data Source=/app/ats.db"
+        value: Data Source=/data/ats.db
+      - key: Jwt__Key
+        value: super_secret_jwt_key_that_is_at_least_32_characters_long
+    healthCheckPath: /api/health
