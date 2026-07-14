@@ -82,6 +82,7 @@ app.UseStaticFiles(); // Enable serving resumes from wwwroot
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapGet("/api/health", () => Results.Ok(new { status = "healthy" }));
 app.MapControllers();
 
 app.Run();
