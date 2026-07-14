@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://atsbackend1-ed4foy0d.b4a.run/api/$1" },
+    { "source": "/api/(.*)", "destination": "https://ats-simplified.onrender.com/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
