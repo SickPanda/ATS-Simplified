@@ -59,9 +59,9 @@ using (var scope = app.Services.CreateScope())
     if (!await roleManager.RoleExistsAsync("Recruiter"))
         await roleManager.CreateAsync(new IdentityRole("Recruiter"));
 
-    if (await userManager.FindByEmailAsync("aazam.qureshi@sysazzle.com") == null)
+    if (await userManager.FindByEmailAsync("mdaazam@gmail.com") == null)
     {
-        var adminUser = new IdentityUser { UserName = "aazam.qureshi@sysazzle.com", Email = "aazam.qureshi@sysazzle.com" };
+        var adminUser = new IdentityUser { UserName = "mdaazam@gmail.com", Email = "mdaazam@gmail.com" };
         var result = await userManager.CreateAsync(adminUser, "Recruiter@111*");
         if (result.Succeeded)
         {

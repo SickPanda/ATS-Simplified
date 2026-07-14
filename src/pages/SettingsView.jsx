@@ -21,12 +21,12 @@ export default function SettingsView() {
 
   // --- Company Profile state ---
   const [company, setCompany] = useState({
-    name: 'Sysazzle Inc.',
-    website: 'https://sysazzle.com',
+    name: 'ATS Pro Demo',
+    website: 'https://atspro.app',
     industry: 'Staffing & Recruiting',
     size: '11-50 employees',
     phone: '+1 (555) 000-1234',
-    email: 'hr@sysazzle.com',
+    email: 'hr@atspro.app',
     street: '1600 Amphitheatre Pkwy',
     city: 'Mountain View',
     state: 'CA',
@@ -41,7 +41,7 @@ export default function SettingsView() {
   const [profile, setProfile] = useState({
     fullName: user?.name || 'Aazam Qureshi',
     title: 'Senior Recruiter',
-    email: user?.email || 'aazam.qureshi@sysazzle.com',
+    email: user?.email || 'mdaazam@gmail.com',
     phone: '+1 (555) 123-4567',
     timezone: 'America/New_York',
     notifyNewCandidate: true,

@@ -188,7 +188,7 @@ export default function DashboardView() {
             color: 'var(--text-1)', letterSpacing: '-0.03em', marginBottom: 4
           }}>Welcome back, Aazam 👋</h2>
           <p style={{ fontSize: 13, color: 'var(--text-3)' }}>
-            Here is your Sysazzle TalentHire workspace status for today.
+            Here is your ATS Pro workspace status for today.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
