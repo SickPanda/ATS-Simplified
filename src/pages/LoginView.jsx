@@ -22,13 +22,22 @@ export default function LoginView() {
       });
 
       if (!res.ok) {
-        throw new Error('Invalid email or password');
+        let msg = 'Invalid email or password';
+        try {
+          const errData = await res.json();
+          if (errData && errData.message) {
+            msg = errData.message;
+          } else if (errData && errData.error) {
+            msg = errData.error;
+          }
+        } catch {}
+        throw new Error(msg);
       }
 
       const data = await res.json();
       login(data.token, data.user);
     } catch (err) {
-      setError(err.message);
+      setError(err.message === 'Failed to fetch' ? 'Cannot connect to server. Please ensure the backend is running and healthy.' : err.message);
     } finally {
       setLoading(false);
     }
