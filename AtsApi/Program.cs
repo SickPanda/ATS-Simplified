@@ -4,6 +4,12 @@ using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(int.Parse(port));
+});
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -102,6 +108,7 @@ app.UseStaticFiles(); // Enable serving resumes from wwwroot
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapGet("/", () => Results.Content("<h1>ATS Core API is running</h1><p>Visit the frontend dashboard to access the app.</p>", "text/html"));
 app.MapGet("/api/health", () => Results.Ok(new { status = "healthy" }));
 app.MapControllers();
 
