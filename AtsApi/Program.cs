@@ -81,6 +81,19 @@ using (var scope = app.Services.CreateScope())
             Console.WriteLine($"[SEED ERROR] Failed to create admin@atspro.com: {string.Join(", ", result.Errors.Select(e => e.Description))}");
         }
     }
+    else
+    {
+        var existingAdmin = await userManager.FindByEmailAsync("admin@atspro.com");
+        if (existingAdmin != null)
+        {
+            var token = await userManager.GeneratePasswordResetTokenAsync(existingAdmin);
+            await userManager.ResetPasswordAsync(existingAdmin, token, "password123");
+            if (!await userManager.IsInRoleAsync(existingAdmin, "Admin"))
+            {
+                await userManager.AddToRoleAsync(existingAdmin, "Admin");
+            }
+        }
+    }
 
     if (await userManager.FindByEmailAsync("recruiter@atspro.com") == null)
     {
@@ -94,6 +107,19 @@ using (var scope = app.Services.CreateScope())
         else
         {
             Console.WriteLine($"[SEED ERROR] Failed to create recruiter@atspro.com: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+        }
+    }
+    else
+    {
+        var existingRecruiter = await userManager.FindByEmailAsync("recruiter@atspro.com");
+        if (existingRecruiter != null)
+        {
+            var token = await userManager.GeneratePasswordResetTokenAsync(existingRecruiter);
+            await userManager.ResetPasswordAsync(existingRecruiter, token, "password123");
+            if (!await userManager.IsInRoleAsync(existingRecruiter, "Recruiter"))
+            {
+                await userManager.AddToRoleAsync(existingRecruiter, "Recruiter");
+            }
         }
     }
 }
