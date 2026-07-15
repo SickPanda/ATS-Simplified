@@ -65,6 +65,8 @@ using (var scope = app.Services.CreateScope())
     if (!await roleManager.RoleExistsAsync("Recruiter"))
         await roleManager.CreateAsync(new IdentityRole("Recruiter"));
 
+
+
     if (await userManager.FindByEmailAsync("mdaazam@gmail.com") == null)
     {
         var adminUser = new IdentityUser { UserName = "mdaazam@gmail.com", Email = "mdaazam@gmail.com" };
@@ -72,6 +74,11 @@ using (var scope = app.Services.CreateScope())
         if (result.Succeeded)
         {
             await userManager.AddToRoleAsync(adminUser, "Admin");
+            Console.WriteLine("[SEED] Created user mdaazam@gmail.com");
+        }
+        else
+        {
+            Console.WriteLine($"[SEED ERROR] Failed to create mdaazam@gmail.com: {string.Join(", ", result.Errors.Select(e => e.Description))}");
         }
     }
 
@@ -82,6 +89,11 @@ using (var scope = app.Services.CreateScope())
         if (result.Succeeded)
         {
             await userManager.AddToRoleAsync(adminUser, "Admin");
+            Console.WriteLine("[SEED] Created user admin@atspro.com");
+        }
+        else
+        {
+            Console.WriteLine($"[SEED ERROR] Failed to create admin@atspro.com: {string.Join(", ", result.Errors.Select(e => e.Description))}");
         }
     }
 
@@ -92,6 +104,11 @@ using (var scope = app.Services.CreateScope())
         if (result.Succeeded)
         {
             await userManager.AddToRoleAsync(recruiterUser, "Recruiter");
+            Console.WriteLine("[SEED] Created user recruiter@atspro.com");
+        }
+        else
+        {
+            Console.WriteLine($"[SEED ERROR] Failed to create recruiter@atspro.com: {string.Join(", ", result.Errors.Select(e => e.Description))}");
         }
     }
 }
