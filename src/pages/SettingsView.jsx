@@ -39,9 +39,9 @@ export default function SettingsView() {
 
   // --- User Profile state ---
   const [profile, setProfile] = useState({
-    fullName: user?.name || 'Aazam Qureshi',
+    fullName: user?.name || 'Admin User',
     title: 'Senior Recruiter',
-    email: user?.email || 'mdaazam@gmail.com',
+    email: user?.email || 'admin@atspro.com',
     phone: '+1 (555) 123-4567',
     timezone: 'America/New_York',
     notifyNewCandidate: true,

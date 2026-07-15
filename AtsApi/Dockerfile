@@ -6,10 +6,14 @@ COPY . .
 RUN dotnet publish "AtsApi.csproj" -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+
+# Run as root to ensure write access to mounted volumes
+USER root
+
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Create persistent data directory for SQLite
+# Create persistent data directory for SQLite (fallback if not mounted)
 RUN mkdir -p /data && chmod 777 /data
 
 # Render passes PORT env var; ASP.NET Core must listen on it

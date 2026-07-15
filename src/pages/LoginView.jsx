@@ -134,7 +134,7 @@ export default function LoginView() {
 
         <div style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: 'var(--text-3)' }}>
           For demo purposes, use:<br/>
-          <strong style={{ color: 'var(--text-2)' }}>mdaazam@gmail.com</strong> / <strong style={{ color: 'var(--text-2)' }}>Recruiter@111*</strong>
+          <strong style={{ color: 'var(--text-2)' }}>admin@atspro.com</strong> / <strong style={{ color: 'var(--text-2)' }}>password123</strong>
         </div>
       </div>
     </div>

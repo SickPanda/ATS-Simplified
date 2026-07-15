@@ -67,21 +67,6 @@ using (var scope = app.Services.CreateScope())
 
 
 
-    if (await userManager.FindByEmailAsync("mdaazam@gmail.com") == null)
-    {
-        var adminUser = new IdentityUser { UserName = "mdaazam@gmail.com", Email = "mdaazam@gmail.com" };
-        var result = await userManager.CreateAsync(adminUser, "Recruiter@111*");
-        if (result.Succeeded)
-        {
-            await userManager.AddToRoleAsync(adminUser, "Admin");
-            Console.WriteLine("[SEED] Created user mdaazam@gmail.com");
-        }
-        else
-        {
-            Console.WriteLine($"[SEED ERROR] Failed to create mdaazam@gmail.com: {string.Join(", ", result.Errors.Select(e => e.Description))}");
-        }
-    }
-
     if (await userManager.FindByEmailAsync("admin@atspro.com") == null)
     {
         var adminUser = new IdentityUser { UserName = "admin@atspro.com", Email = "admin@atspro.com" };
