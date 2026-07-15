@@ -10,7 +10,7 @@ WORKDIR /app
 COPY --from=build /app/publish .
 
 # Create persistent data directory for SQLite
-RUN mkdir -p /data
+RUN mkdir -p /data && chown -R app:app /data
 
 # Render passes PORT env var; ASP.NET Core must listen on it
 ENV ASPNETCORE_URLS=http://+:8080
