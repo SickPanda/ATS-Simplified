@@ -68,6 +68,26 @@ using (var scope = app.Services.CreateScope())
             await userManager.AddToRoleAsync(adminUser, "Admin");
         }
     }
+
+    if (await userManager.FindByEmailAsync("admin@atspro.com") == null)
+    {
+        var adminUser = new IdentityUser { UserName = "admin@atspro.com", Email = "admin@atspro.com" };
+        var result = await userManager.CreateAsync(adminUser, "password123");
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
+    }
+
+    if (await userManager.FindByEmailAsync("recruiter@atspro.com") == null)
+    {
+        var recruiterUser = new IdentityUser { UserName = "recruiter@atspro.com", Email = "recruiter@atspro.com" };
+        var result = await userManager.CreateAsync(recruiterUser, "password123");
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(recruiterUser, "Recruiter");
+        }
+    }
 }
 
 // Configure the HTTP request pipeline.
