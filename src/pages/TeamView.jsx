@@ -118,7 +118,7 @@ export default function TeamView() {
         </div>
       </div>
 
-      <div className="card anim-fade-up" style={{ padding: 16, background: 'var(--primary-glow)', border: '1px solid rgba(37,99,235,0.15)' }}>
+      <div className="card anim-fade-up" style={{ padding: 16, background: 'var(--primary-glow)', border: '1px solid rgba(201,162,39,0.22)' }}>
         <p style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.55 }}>
           <strong>How ownership works:</strong> new candidates, jobs, and clients default to you.
           Use <em>My desk</em> filters on Candidates / Jobs / Clients. Recruiters can claim unassigned

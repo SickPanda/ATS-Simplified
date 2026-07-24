@@ -1,6 +1,6 @@
 /**
  * Single source of truth for hiring-stage colors.
- * Progression = blue ladder → green hire → gray out.
+ * Progression = stone → Aegean navy → orichalcum gold → emerald triumph.
  * Includes client submittal as its own step before interview/offer.
  */
 export const STAGES = [
@@ -8,50 +8,50 @@ export const STAGES = [
     id: 'Applied',
     label: 'Applied',
     step: 1,
-    colorHex: '#64748b',
-    softHex: '#f1f5f9',
+    colorHex: '#7a8494',
+    softHex: '#eef0f3',
   },
   {
     id: 'Screened',
     label: 'Screened',
     step: 2,
-    colorHex: '#60a5fa',
-    softHex: '#eff6ff',
+    colorHex: '#4a6fa5',
+    softHex: '#e8eef6',
   },
   {
     id: 'Submitted',
     label: 'Submitted to Client',
     step: 3,
-    colorHex: '#3b82f6',
-    softHex: '#dbeafe',
+    colorHex: '#2c5282',
+    softHex: '#e2ebf5',
   },
   {
     id: 'Interview',
     label: 'Client Interview',
     step: 4,
-    colorHex: '#1d4ed8',
-    softHex: '#dbeafe',
+    colorHex: '#1a365d',
+    softHex: '#dce6f2',
   },
   {
     id: 'Offer',
     label: 'Offer',
     step: 5,
-    colorHex: '#1e3a8a',
-    softHex: '#e0e7ff',
+    colorHex: '#c9a227',
+    softHex: '#faf3d9',
   },
   {
     id: 'Hired',
     label: 'Hired',
     step: 6,
-    colorHex: '#047857',
-    softHex: '#d1fae5',
+    colorHex: '#1a6b4a',
+    softHex: '#d8f3e7',
   },
   {
     id: 'Rejected',
     label: 'Rejected',
     step: 0,
-    colorHex: '#94a3b8',
-    softHex: '#f8fafc',
+    colorHex: '#9ca3af',
+    softHex: '#f3f4f6',
   },
 ];
 

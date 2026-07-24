@@ -313,7 +313,7 @@ export default function JobWorkspace() {
                       <span key={i} style={{ 
                         padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, 
                         background: 'var(--primary-glow)', color: 'var(--primary)', 
-                        border: '1px solid rgba(37,99,235,0.2)' 
+                        border: '1px solid rgba(201,162,39,0.28)' 
                       }}>
                         {s}
                       </span>
@@ -376,7 +376,7 @@ export default function JobWorkspace() {
                 {matches.map((m, idx) => (
                   <div key={m.candidateId} className="card-lift" style={{
                     padding: '16px 20px',
-                    border: expandedMatch === m.candidateId ? '1px solid rgba(37,99,235,0.35)' : '1px solid var(--border)',
+                    border: expandedMatch === m.candidateId ? '1px solid rgba(201,162,39,0.45)' : '1px solid var(--border)',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                       <div style={{
@@ -453,8 +453,8 @@ export default function JobWorkspace() {
                             SCORE BREAKDOWN (EXPLAINABLE)
                           </div>
                           <MatchBar label="Skills overlap" value={m.skillScore} max={55} color="#047857" />
-                          <MatchBar label="Role title fit" value={m.roleScore} max={25} color="#2563eb" />
-                          <MatchBar label="Experience level" value={m.experienceScore} max={15} color="#1d4ed8" />
+                          <MatchBar label="Role title fit" value={m.roleScore} max={25} color="#1a365d" />
+                          <MatchBar label="Experience level" value={m.experienceScore} max={15} color="#2c5282" />
                           <MatchBar label="Location signal" value={m.locationScore} max={5} color="#64748b" />
                         </div>
                         <div>

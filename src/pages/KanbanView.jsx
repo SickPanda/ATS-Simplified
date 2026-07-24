@@ -10,16 +10,16 @@ import StageProgress from '../components/StageProgress';
 
 /**
  * Staffing pipeline — list + stage model (not Kanban).
- * Stage colors = ordered blue ladder (shared app-wide via stages.js).
+ * Stage colors = stone → navy → gold → emerald (shared via stages.js).
  */
 
 const AVATARS = [
-  { bg: '#eff6ff', fg: '#1d4ed8' },
-  { bg: '#dbeafe', fg: '#1e40af' },
-  { bg: '#f1f5f9', fg: '#475569' },
-  { bg: '#e0e7ff', fg: '#3730a3' },
-  { bg: '#ecfdf5', fg: '#047857' },
-  { bg: '#f8fafc', fg: '#334155' },
+  { bg: '#e8eef6', fg: '#1a365d' },
+  { bg: '#e2ebf5', fg: '#2c5282' },
+  { bg: '#eef0f3', fg: '#7a8494' },
+  { bg: '#faf3d9', fg: '#8a6d1a' },
+  { bg: '#d8f3e7', fg: '#1a6b4a' },
+  { bg: '#dce6f2', fg: '#0f2440' },
 ];
 
 function initials(name) {
@@ -488,7 +488,7 @@ export default function KanbanView({ isEmbedded = false }) {
                             </button>
                           )}
                           {app.stage === 'Submitted' && (
-                            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#3b82f6', alignSelf: 'center' }}>On client desk</span>
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gold-deep)', alignSelf: 'center' }}>On client desk</span>
                           )}
                           {['Submitted', 'Interview', 'Screened'].includes(app.stage) && (
                             <button type="button" style={actionBtn('#b45309')} onClick={() => setInterviewingApp(app)}>
@@ -709,7 +709,7 @@ export default function KanbanView({ isEmbedded = false }) {
             </div>
             <form onSubmit={submitToClient} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
               <div style={{
-                padding: 12, borderRadius: 10, background: 'var(--primary-glow)', border: '1px solid rgba(37,99,235,0.2)',
+                padding: 12, borderRadius: 10, background: 'var(--primary-glow)', border: '1px solid rgba(201,162,39,0.25)',
                 fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.45,
               }}>
                 This packages the candidate for the client and moves their pipeline stage to

@@ -1,5 +1,5 @@
-﻿import { useState } from 'react';
-import { Mail, Lock, Building2 } from 'lucide-react';
+import { useState } from 'react';
+import { Mail, Lock, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginView() {
@@ -44,32 +44,38 @@ export default function LoginView() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'var(--bg)'
-    }}>
-      <div className="card" style={{
+    <div className="login-hero">
+      <div className="epic-frame anim-scale-in" style={{
         width: '100%',
         maxWidth: 420,
-        padding: 40,
-        boxShadow: '0 20px 40px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.05)',
-        border: '1px solid rgba(0,0,0,0.05)'
+        padding: '40px 36px 36px',
+        position: 'relative',
+        zIndex: 1,
       }}>
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 16,
-            background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', margin: '0 auto 16px',
-            boxShadow: '0 8px 24px var(--primary-glow-strong)'
-          }}>
-            <Building2 size={28} />
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div className="mark-torch" style={{ margin: '0 auto 18px' }}>
+            <Zap size={26} color="#e8c547" fill="#e8c547" />
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)' }}>Welcome Back</h1>
-          <p style={{ color: 'var(--text-3)', fontSize: 14, marginTop: 4 }}>Sign in to continue to Candeo</p>
+          <h1 className="brand-wordmark" style={{
+            fontSize: 28,
+            color: 'var(--text-1)',
+            lineHeight: 1.15,
+          }}>
+            Candeo
+          </h1>
+          <p style={{
+            color: 'var(--gold-deep)',
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.18em',
+            marginTop: 6,
+            textTransform: 'uppercase',
+          }}>
+            I shine · Staffing OS
+          </p>
+          <p style={{ color: 'var(--text-3)', fontSize: 13.5, marginTop: 12 }}>
+            Sign in to your desk
+          </p>
         </div>
 
         {error && (
@@ -78,17 +84,17 @@ export default function LoginView() {
             color: 'var(--danger)',
             padding: '12px 16px',
             borderRadius: 8,
-            border: '1px solid rgba(185, 28, 28, 0.2)',
+            border: '1px solid rgba(155, 44, 44, 0.2)',
             fontSize: 13,
             fontWeight: 500,
-            marginBottom: 24,
+            marginBottom: 20,
             textAlign: 'center'
           }}>
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>
             <label className="label">Email Address</label>
             <div className="input-search">
@@ -103,11 +109,11 @@ export default function LoginView() {
               />
             </div>
           </div>
-          
+
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <label className="label" style={{ margin: 0 }}>Password</label>
-              <a href="#" style={{ fontSize: 12, color: 'var(--primary)', textDecoration: 'none', fontWeight: 500 }}>Forgot password?</a>
+              <a href="#" style={{ fontSize: 12, color: 'var(--gold-deep)', textDecoration: 'none', fontWeight: 600 }}>Forgot password?</a>
             </div>
             <div className="input-search">
               <Lock size={16} color="var(--text-4)" />
@@ -126,15 +132,24 @@ export default function LoginView() {
             type="submit"
             className="btn btn-primary"
             disabled={loading}
-            style={{ padding: '12px', fontSize: 15, marginTop: 8 }}
+            style={{ padding: '12px', fontSize: 14.5, marginTop: 6, letterSpacing: '0.03em' }}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Signing in…' : 'Enter Candeo'}
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: 'var(--text-3)' }}>
-          For demo purposes, use:<br/>
-          <strong style={{ color: 'var(--text-2)' }}>admin@candeo.com</strong> / <strong style={{ color: 'var(--text-2)' }}>password123</strong>
+        <div style={{
+          textAlign: 'center',
+          marginTop: 24,
+          paddingTop: 18,
+          borderTop: '1px solid rgba(201, 162, 39, 0.18)',
+          fontSize: 12.5,
+          color: 'var(--text-3)',
+        }}>
+          Demo access<br />
+          <strong style={{ color: 'var(--primary)', fontWeight: 700 }}>admin@candeo.com</strong>
+          {' · '}
+          <strong style={{ color: 'var(--text-2)' }}>password123</strong>
         </div>
       </div>
     </div>

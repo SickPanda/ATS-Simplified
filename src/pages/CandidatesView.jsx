@@ -6,8 +6,8 @@ import { isMine } from '../lib/ownership';
 
 /* Slate → blue monochrome avatars (brand-aligned) */
 const AVATAR_COLORS = [
-  ['#64748b', '#f1f5f9'], ['#3b82f6', '#eff6ff'], ['#2563eb', '#dbeafe'],
-  ['#1d4ed8', '#dbeafe'], ['#1e3a8a', '#e0e7ff'], ['#475569', '#f8fafc'],
+  ['#7a8494', '#eef0f3'], ['#4a6fa5', '#e8eef6'], ['#2c5282', '#e2ebf5'],
+  ['#1a365d', '#dce6f2'], ['#c9a227', '#faf3d9'], ['#1a6b4a', '#d8f3e7'],
 ];
 function getInitials(name) { return name?.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)||'??'; }
 function getAvatarColors(name) {
@@ -1326,7 +1326,7 @@ export default function CandidatesView() {
                       <div style={{ height:1, background:'var(--border)' }} />
 
                       {/* AI Sourcing Copilot */}
-                      <section style={{ padding: '16px', background: 'var(--primary-glow)', borderRadius: 12, border: '1px solid rgba(37, 99, 235, 0.15)' }}>
+                      <section style={{ padding: '16px', background: 'var(--primary-glow)', borderRadius: 12, border: '1px solid rgba(201, 162, 39, 0.22)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                           <Zap size={14} color="var(--primary-light)" />
                           <p style={{ fontSize:11, fontWeight:800, color:'var(--primary-light)', letterSpacing:'0.08em' }}>SYS_CO_PILOT</p>
@@ -1502,7 +1502,7 @@ export default function CandidatesView() {
                                 padding:'4px 10px', borderRadius:99,
                                 fontSize:11.5, fontWeight:600,
                                 background:'var(--primary-glow)', color:'var(--primary-light)',
-                                border:'1px solid rgba(37,99,235,0.25)',
+                                border:'1px solid rgba(201,162,39,0.35)',
                               }}>{skill}</span>
                             ))}
                         </div>
@@ -1553,7 +1553,7 @@ export default function CandidatesView() {
                                   fontSize: 11.5, padding: '5px 10px',
                                   background: on ? 'var(--primary-glow)' : '#fff',
                                   color: on ? 'var(--primary)' : 'var(--text-2)',
-                                  border: `1px solid ${on ? 'rgba(37,99,235,0.3)' : 'var(--border)'}`,
+                                  border: `1px solid ${on ? 'rgba(201,162,39,0.4)' : 'var(--border)'}`,
                                 }}
                               >
                                 <Icon size={12} /> {t.label}

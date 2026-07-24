@@ -18,19 +18,26 @@ function CareersHome() {
   }, []);
 
   return (
-    <div style={{ maxWidth: 880, margin: '0 auto', padding: '40px 20px 80px' }}>
-      <div style={{ textAlign: 'center', marginBottom: 36 }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: 12, margin: '0 auto 14px',
-          background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
-        }}>
-          <Building2 size={22} />
+    <div className="login-hero" style={{ minHeight: '100vh', alignItems: 'flex-start', overflow: 'auto' }}>
+    <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 20px 80px', width: '100%', position: 'relative', zIndex: 1 }}>
+      <div style={{ textAlign: 'center', marginBottom: 40 }}>
+        <div className="mark-torch" style={{ width: 52, height: 52, margin: '0 auto 16px', borderRadius: 12 }}>
+          <Building2 size={22} color="#e8c547" />
         </div>
-        <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 28, color: 'var(--text-1)', letterSpacing: '-0.03em' }}>
-          {brand.companyName} Careers
+        <h1 className="brand-wordmark" style={{ fontSize: 30, color: 'var(--text-1)', lineHeight: 1.15 }}>
+          {brand.companyName}
         </h1>
-        <p style={{ color: 'var(--text-3)', marginTop: 8, fontSize: 15 }}>{brand.tagline}</p>
+        <p style={{
+          color: 'var(--gold-deep)',
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.16em',
+          marginTop: 6,
+          textTransform: 'uppercase',
+        }}>
+          Careers
+        </p>
+        <p style={{ color: 'var(--text-3)', marginTop: 12, fontSize: 15 }}>{brand.tagline}</p>
       </div>
 
       {loading ? (
@@ -74,8 +81,9 @@ function CareersHome() {
       )}
 
       <p style={{ textAlign: 'center', marginTop: 40, fontSize: 12, color: 'var(--text-4)' }}>
-        <Link to="/login" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Recruiter sign-in</Link>
+        <Link to="/login" style={{ color: 'var(--gold-deep)', textDecoration: 'none', fontWeight: 600 }}>Recruiter sign-in</Link>
       </p>
+    </div>
     </div>
   );
 }

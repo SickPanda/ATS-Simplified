@@ -52,12 +52,8 @@ function Sidebar({ user, logout }) {
   const isRecruiter = user?.roles?.includes('Recruiter');
 
   return (
-    <aside style={{
+    <aside className="epic-panel" style={{
       width: 'var(--sidebar-width)',
-      background: 'rgba(255, 255, 255, 0.82)',
-      backdropFilter: 'blur(24px) saturate(1.8)',
-      WebkitBackdropFilter: 'blur(24px) saturate(1.8)',
-      borderRight: '1px solid rgba(0, 0, 0, 0.07)',
       display: 'flex',
       flexDirection: 'column',
       flexShrink: 0,
@@ -66,24 +62,28 @@ function Sidebar({ user, logout }) {
       top: 0,
     }}>
       {/* Logo */}
-      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{
+        padding: '20px 16px 16px',
+        borderBottom: '1px solid rgba(201, 162, 39, 0.15)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
           <div style={{
-            width: 32, height: 32,
-            background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-            borderRadius: 9,
+            width: 34, height: 34,
+            background: 'linear-gradient(155deg, #2c5282 0%, #1a365d 55%, #0f2440 100%)',
+            borderRadius: 10,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 16px var(--primary-glow-strong)',
+            border: '1.5px solid rgba(201, 162, 39, 0.5)',
+            boxShadow: '0 0 0 2px rgba(201, 162, 39, 0.12), 0 4px 16px rgba(0,0,0,0.35), 0 0 18px rgba(201, 162, 39, 0.15)',
             flexShrink: 0,
           }}>
-            <Zap size={16} color="white" fill="white" />
+            <Zap size={16} color="#e8c547" fill="#e8c547" />
           </div>
           <div>
-            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 15, color: 'var(--text-1)', lineHeight: 1.2 }}>
+            <div className="brand-wordmark" style={{ fontSize: 15, color: '#f5efe0', lineHeight: 1.15 }}>
               Candeo
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 500, letterSpacing: '0.05em' }}>
-              Staffing OS
+            <div style={{ fontSize: 9.5, color: 'var(--sidebar-muted)', fontWeight: 600, letterSpacing: '0.14em', marginTop: 2 }}>
+              I SHINE · STAFFING OS
             </div>
           </div>
         </div>
@@ -91,9 +91,7 @@ function Sidebar({ user, logout }) {
 
       {/* Main nav */}
       <nav style={{ flex: 1, padding: '14px 10px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
-        <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-4)', letterSpacing: '0.08em', padding: '0 6px', marginBottom: 6 }}>
-          MAIN
-        </div>
+        <div className="nav-section-label">Main</div>
         {NAV.map(({ label, icon: Icon, path, exact }) => {
           if (isRecruiter && label === 'Clients') return null;
           return (
@@ -109,11 +107,8 @@ function Sidebar({ user, logout }) {
           );
         })}
 
-        {/* Settings always visible for all roles */}
-        <div style={{ height: 1, background: 'var(--border)', margin: '12px 4px 10px' }} />
-        <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-4)', letterSpacing: '0.08em', padding: '0 6px', marginBottom: 6 }}>
-          WORKSPACE
-        </div>
+        <div style={{ height: 1, background: 'rgba(201, 162, 39, 0.12)', margin: '12px 4px 10px' }} />
+        <div className="nav-section-label">Workspace</div>
         {BOTTOM_NAV.map(({ label, icon: Icon, path }) => (
           <NavLink
             key={path}
@@ -129,7 +124,7 @@ function Sidebar({ user, logout }) {
       {/* User */}
       <div style={{
         padding: '12px 10px',
-        borderTop: '1px solid var(--border)',
+        borderTop: '1px solid rgba(201, 162, 39, 0.12)',
       }}>
         <a
           href="/careers"
@@ -145,28 +140,33 @@ function Sidebar({ user, logout }) {
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '8px 10px',
           borderRadius: 10,
-          cursor: 'pointer',
           transition: 'background var(--t-fast)',
         }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
           <div style={{
             width: 30, height: 30, borderRadius: '50%',
-            background: 'var(--primary)',
+            background: 'linear-gradient(145deg, #c9a227, #8a6d1a)',
+            border: '1px solid rgba(232, 197, 71, 0.45)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0,
+            fontSize: 11, fontWeight: 700, color: '#0f2440', flexShrink: 0,
           }}>
             {user?.name?.substring(0, 2).toUpperCase() || 'US'}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.3 }}>{user?.name}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-3)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--sidebar-text)', lineHeight: 1.3 }}>{user?.name}</div>
+            <div style={{ fontSize: 11, color: 'var(--sidebar-muted)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {user?.role}
             </div>
           </div>
-          <button className="btn-icon" onClick={logout} title="Sign Out">
-            <LogOut size={14} color="var(--text-3)" />
+          <button
+            className="btn-icon"
+            onClick={logout}
+            title="Sign Out"
+            style={{ color: 'var(--sidebar-muted)' }}
+          >
+            <LogOut size={14} />
           </button>
         </div>
       </div>
@@ -254,10 +254,11 @@ function Topbar({ user }) {
   return (
     <header style={{
       height: 'var(--topbar-height)',
-      background: 'rgba(250, 248, 245, 0.88)',
-      backdropFilter: 'blur(20px) saturate(1.6)',
-      WebkitBackdropFilter: 'blur(20px) saturate(1.6)',
-      borderBottom: '1px solid rgba(0, 0, 0, 0.07)',
+      background: 'rgba(255, 252, 247, 0.86)',
+      backdropFilter: 'blur(20px) saturate(1.5)',
+      WebkitBackdropFilter: 'blur(20px) saturate(1.5)',
+      borderBottom: '1px solid rgba(28, 42, 58, 0.08)',
+      boxShadow: '0 1px 0 rgba(201, 162, 39, 0.08)',
       display: 'flex',
       alignItems: 'center',
       padding: '0 24px',
@@ -277,11 +278,11 @@ function Topbar({ user }) {
           </>
         )}
         <h1 style={{
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontWeight: 700,
+          fontFamily: "var(--font-display)",
+          fontWeight: 600,
           fontSize: 15,
           color: 'var(--text-1)',
-          letterSpacing: '-0.02em',
+          letterSpacing: '0.04em',
         }}>
           {title}
         </h1>
@@ -417,10 +418,11 @@ function Topbar({ user }) {
         <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
         <div style={{
           width: 30, height: 30, borderRadius: '50%',
-          background: 'var(--primary)',
+          background: 'linear-gradient(145deg, #2c5282, #1a365d)',
+          border: '1.5px solid rgba(201, 162, 39, 0.45)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer',
-          boxShadow: '0 2px 8px var(--primary-glow)',
+          fontSize: 11, fontWeight: 700, color: '#f5efe0', cursor: 'pointer',
+          boxShadow: '0 2px 10px rgba(15, 36, 64, 0.25)',
         }}>
           {user?.name?.substring(0, 2).toUpperCase() || user?.email?.substring(0, 2).toUpperCase() || 'US'}
         </div>

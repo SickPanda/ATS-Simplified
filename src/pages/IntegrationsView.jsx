@@ -143,7 +143,7 @@ export default function IntegrationsView() {
               fontWeight: 600,
               background: category === id ? 'var(--primary-glow)' : '#fff',
               color: category === id ? 'var(--primary)' : 'var(--text-2)',
-              border: `1px solid ${category === id ? 'rgba(37,99,235,0.25)' : 'var(--border)'}`,
+              border: `1px solid ${category === id ? 'rgba(201,162,39,0.4)' : 'var(--border)'}`,
             }}
           >
             <Icon size={14} /> {id}
@@ -152,7 +152,7 @@ export default function IntegrationsView() {
       </div>
 
       {/* Info banner */}
-      <div className="card anim-fade-up" style={{ padding: '14px 18px', display: 'flex', gap: 12, alignItems: 'flex-start', background: 'linear-gradient(135deg, rgba(37,99,235,0.06), rgba(37,99,235,0.02))', border: '1px solid rgba(37,99,235,0.12)' }}>
+      <div className="card anim-fade-up" style={{ padding: '14px 18px', display: 'flex', gap: 12, alignItems: 'flex-start', background: 'linear-gradient(135deg, rgba(26,54,93,0.08), rgba(201,162,39,0.05))', border: '1px solid rgba(201,162,39,0.2)' }}>
         <Plug size={18} color="var(--primary)" style={{ marginTop: 2, flexShrink: 0 }} />
         <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.55 }}>
           <strong style={{ color: 'var(--text-1)' }}>How this maps to Ceipal:</strong> they win on connectors to Indeed, Dice, LinkedIn RSC, Outlook/Teams, Fieldglass, Checkr, QuickBooks, etc.

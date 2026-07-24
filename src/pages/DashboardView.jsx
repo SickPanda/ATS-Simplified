@@ -37,8 +37,8 @@ function getInitials(name) {
 }
 
 const AVATAR_COLORS = [
-  ['#64748b', '#f1f5f9'], ['#3b82f6', '#eff6ff'], ['#2563eb', '#dbeafe'],
-  ['#1d4ed8', '#dbeafe'], ['#1e3a8a', '#e0e7ff'], ['#475569', '#f8fafc'],
+  ['#7a8494', '#eef0f3'], ['#4a6fa5', '#e8eef6'], ['#2c5282', '#e2ebf5'],
+  ['#1a365d', '#dce6f2'], ['#c9a227', '#faf3d9'], ['#1a6b4a', '#d8f3e7'],
 ];
 function getAvatarColors(name) {
   let h = 0;
@@ -519,8 +519,8 @@ export default function DashboardView() {
             <AreaChart data={WEEKLY_TREND} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorSub" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.22} />
-                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#1a365d" stopOpacity={0.22} />
+                  <stop offset="95%" stopColor="#c9a227" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="colorSends" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#047857" stopOpacity={0.2} />
@@ -530,7 +530,7 @@ export default function DashboardView() {
               <XAxis dataKey="day" tick={{ fill: 'var(--text-3)', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--text-3)', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip content={<TrendTooltip />} />
-              <Area type="monotone" dataKey="Submissions" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#colorSub)" />
+              <Area type="monotone" dataKey="Submissions" stroke="#1a365d" strokeWidth={2} fillOpacity={1} fill="url(#colorSub)" />
               <Area type="monotone" dataKey="ClientSends" stroke="#047857" strokeWidth={2} fillOpacity={1} fill="url(#colorSends)" />
             </AreaChart>
           </ResponsiveContainer>
