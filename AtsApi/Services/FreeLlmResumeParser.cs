@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using AtsApi.Models;
 
@@ -107,7 +107,7 @@ public class FreeLlmResumeParser
                 City = Get("City"),
                 State = Get("State"),
                 WorkAuthorization = FirstNonEmpty(Get("WorkAuthorization"), "Not specified")!,
-                Source = "ATS Pro AI (Llama/Groq)",
+                Source = "Candeo AI (Llama/Groq)",
                 Status = "Active",
                 Ownership = "Aazam Qureshi",
                 SkillsJson = skills,

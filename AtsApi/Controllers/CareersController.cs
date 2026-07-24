@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using AtsApi.Models;
@@ -254,7 +254,7 @@ public class CareersController : ControllerBase
         // Lightweight public branding (could later read AppSettings)
         return Ok(new
         {
-            companyName = "ATS Pro",
+            companyName = "Candeo",
             tagline = "We're hiring — join our talent network",
             careersPath = "/careers"
         });

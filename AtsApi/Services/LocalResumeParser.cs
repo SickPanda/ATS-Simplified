@@ -1,11 +1,11 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.RegularExpressions;
 using AtsApi.Models;
 
 namespace AtsApi.Services;
 
 /// <summary>
-/// ATS Pro Intelligence — in-app resume engine. No external AI APIs.
+/// Candeo Intelligence — in-app resume engine. No external AI APIs.
 /// Runs entirely on the server (Azure Free F1 safe).
 /// </summary>
 public static class LocalResumeParser
@@ -18,7 +18,7 @@ public static class LocalResumeParser
         string? LinkedIn,
         string? GitHub,
         List<WorkHistoryItem> WorkHistory,
-        string Engine = "ATS Pro Intelligence"
+        string Engine = "Candeo Intelligence"
     );
 
     private static readonly string[] SkillCatalog =
@@ -63,10 +63,10 @@ public static class LocalResumeParser
         "professional summary", "about me", "employment history"
     };
 
-    public static Candidate Parse(string rawText, string source = "ATS Pro Intelligence")
+    public static Candidate Parse(string rawText, string source = "Candeo Intelligence")
         => ParseDetailed(rawText, source).Candidate;
 
-    public static ParseResult ParseDetailed(string rawText, string source = "ATS Pro Intelligence")
+    public static ParseResult ParseDetailed(string rawText, string source = "Candeo Intelligence")
     {
         var text = Normalize(rawText);
         var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

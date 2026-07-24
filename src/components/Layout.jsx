@@ -1,4 +1,4 @@
-import { Routes, Route, NavLink, useLocation, useNavigate, Link } from 'react-router-dom';
+﻿import { Routes, Route, NavLink, useLocation, useNavigate, Link } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, Users, Settings, Bell, Search, ChevronRight, Zap, Building2, LogOut, CheckCircle, X, Plug, ScrollText, Flame, Clock, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import DashboardView from '../pages/DashboardView.jsx';
@@ -80,10 +80,10 @@ function Sidebar({ user, logout }) {
           </div>
           <div>
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 15, color: 'var(--text-1)', lineHeight: 1.2 }}>
-              ATS Pro
+              Candeo
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 500, letterSpacing: '0.05em' }}>
-              RECRUITING SUITE
+              Staffing OS
             </div>
           </div>
         </div>
@@ -178,7 +178,7 @@ function Topbar({ user }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const parts = pathname.split('/').filter(Boolean);
-  const title = PAGE_TITLES[pathname] || (parts[2] === 'pipeline' ? 'Pipeline' : 'ATS Pro');
+  const title = PAGE_TITLES[pathname] || (parts[2] === 'pipeline' ? 'Pipeline' : 'Candeo');
   
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);

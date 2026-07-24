@@ -1,4 +1,4 @@
-using AtsApi.Models;
+﻿using AtsApi.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -148,9 +148,9 @@ using (var scope = app.Services.CreateScope())
                 Console.WriteLine($"[SEED ERROR] {email}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
             }
         }
-        else if (app.Environment.IsDevelopment())
+        else
         {
-            // Only force-reset demo passwords in Development
+            // Keep demo account passwords aligned with DEMO_PASSWORD (all environments)
             var token = await userManager.GeneratePasswordResetTokenAsync(existing);
             await userManager.ResetPasswordAsync(existing, token, password);
             if (!await userManager.IsInRoleAsync(existing, role))
@@ -159,8 +159,8 @@ using (var scope = app.Services.CreateScope())
     }
 
     var demoPassword = Environment.GetEnvironmentVariable("DEMO_PASSWORD") ?? "password123";
-    await EnsureUser("admin@atspro.com", demoPassword, "Admin");
-    await EnsureUser("recruiter@atspro.com", demoPassword, "Recruiter");
+    await EnsureUser("admin@candeo.com", demoPassword, "Admin");
+    await EnsureUser("recruiter@candeo.com", demoPassword, "Recruiter");
 
     // Seed email templates (intro, job pitch, etc.)
     var emailSvc = scope.ServiceProvider.GetRequiredService<AtsApi.Services.EmailService>();

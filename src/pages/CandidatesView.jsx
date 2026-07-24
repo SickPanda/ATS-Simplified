@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+﻿import { useEffect, useState, useRef } from 'react';
 import { Upload, FileText, X, Phone, Mail, GraduationCap, Briefcase, Search, Trash2, Filter, ChevronDown, CloudUpload, AlertCircle, CheckCircle, Zap, Send, LayoutList, TerminalSquare, Users, User, Globe, MapPin, ClipboardCheck, ShieldCheck, Pencil, Save, Download, Flame, Bookmark, PhoneCall, StickyNote, Calendar, MessageSquare, ArrowRightLeft, UserCog, Activity as ActivityIcon, FolderOpen, GitMerge, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { downloadCsvExport } from '../lib/export';
@@ -158,7 +158,7 @@ export default function CandidatesView() {
           showToast(`Duplicate found — updated ${data.candidate?.name || 'existing candidate'}.`, 'success');
         } else {
           const conf = data.confidence != null ? ` · ${data.confidence}% confidence` : '';
-          showToast(`ATS Pro Intelligence: ${data.candidate?.name || 'candidate'} added${conf}`, 'success');
+          showToast(`Candeo Intelligence: ${data.candidate?.name || 'candidate'} added${conf}`, 'success');
         }
         fetchCandidates();
       } else {
@@ -456,7 +456,7 @@ export default function CandidatesView() {
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
       const conf = data.confidence != null ? ` · ${data.confidence}% confidence` : '';
-      showToast(`ATS Pro Intelligence: candidate added${conf}`, 'success');
+      showToast(`Candeo Intelligence: candidate added${conf}`, 'success');
       setShowQuickParse(false);
       setQuickParseText('');
       fetchCandidates();
@@ -777,7 +777,7 @@ export default function CandidatesView() {
           <p style={{ fontSize:15, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>
             Drag and drop resume PDF here
           </p>
-          <p style={{ fontSize:13, color:'var(--text-3)' }}>PDF / Word · ATS Pro Intelligence (in-app, no external AI)</p>
+          <p style={{ fontSize:13, color:'var(--text-3)' }}>PDF / Word · Candeo Intelligence (in-app, no external AI)</p>
         </div>
       )}
 
@@ -1070,7 +1070,7 @@ export default function CandidatesView() {
               <button className="btn-icon" onClick={() => setShowQuickParse(false)}><X size={16} /></button>
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 16 }}>
-              Paste raw text from LinkedIn or a resume. ATS Pro Intelligence extracts name, skills, location, and work auth entirely in-app.
+              Paste raw text from LinkedIn or a resume. Candeo Intelligence extracts name, skills, location, and work auth entirely in-app.
             </p>
             <textarea 
               className="input" 

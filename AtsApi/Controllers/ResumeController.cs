@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using AtsApi.Models;
@@ -20,7 +20,7 @@ public class ResumeController : ControllerBase
     }
 
     /// <summary>
-    /// ATS Pro Intelligence — fully in-app resume parse.
+    /// Candeo Intelligence — fully in-app resume parse.
     /// No external AI APIs (Gemini/Groq/OpenAI). Data never leaves your server.
     /// </summary>
     [HttpPost("parse")]
@@ -48,11 +48,11 @@ public class ResumeController : ControllerBase
             if (string.IsNullOrWhiteSpace(text) || text.Trim().Length < 20)
             {
                 return BadRequest(
-                    "ATS Pro Intelligence could not extract enough text. " +
+                    "Candeo Intelligence could not extract enough text. " +
                     "Scanned/image-only PDFs are not supported yet — use a text PDF, DOCX, or Quick Parse paste.");
             }
 
-            var result = LocalResumeParser.ParseDetailed(text, "ATS Pro Intelligence");
+            var result = LocalResumeParser.ParseDetailed(text, "Candeo Intelligence");
             var parsed = result.Candidate;
 
             // Save original file (DATA_DIR-aware)
@@ -64,7 +64,7 @@ public class ResumeController : ControllerBase
             {
                 var parts = new List<string>
                 {
-                    $"ATS Pro Intelligence · confidence {result.Confidence}%",
+                    $"Candeo Intelligence · confidence {result.Confidence}%",
                     $"Engine: in-app (no external AI)"
                 };
                 if (!string.IsNullOrWhiteSpace(result.Summary))
@@ -118,7 +118,7 @@ public class ResumeController : ControllerBase
                         ContentType = file.ContentType ?? "application/octet-stream",
                         SizeBytes = size,
                         DocType = "Resume",
-                        UploadedBy = "ATS Pro Intelligence",
+                        UploadedBy = "Candeo Intelligence",
                         UploadedAt = DateTime.UtcNow,
                         Notes = "Parsed upload (duplicate merge)"
                     });
@@ -135,10 +135,10 @@ public class ResumeController : ControllerBase
                     await _context.SaveChangesAsync();
                     return Ok(new
                     {
-                        message = "Duplicate detected — existing candidate updated by ATS Pro Intelligence.",
+                        message = "Duplicate detected — existing candidate updated by Candeo Intelligence.",
                         candidate = existing,
                         isDuplicate = true,
-                        engine = "ats-pro-intelligence",
+                        engine = "candeo-intelligence",
                         confidence = result.Confidence,
                         summary = result.Summary,
                         linkedIn = result.LinkedIn,
@@ -159,7 +159,7 @@ public class ResumeController : ControllerBase
                 ContentType = file.ContentType ?? "application/octet-stream",
                 SizeBytes = size,
                 DocType = "Resume",
-                UploadedBy = "ATS Pro Intelligence",
+                UploadedBy = "Candeo Intelligence",
                 UploadedAt = DateTime.UtcNow
             });
 
@@ -175,10 +175,10 @@ public class ResumeController : ControllerBase
 
             return Ok(new
             {
-                message = $"Resume parsed by ATS Pro Intelligence ({result.Confidence}% confidence) — runs in your app, no external AI.",
+                message = $"Resume parsed by Candeo Intelligence ({result.Confidence}% confidence) — runs in your app, no external AI.",
                 candidate = parsed,
                 isDuplicate = false,
-                engine = "ats-pro-intelligence",
+                engine = "candeo-intelligence",
                 confidence = result.Confidence,
                 summary = result.Summary,
                 linkedIn = result.LinkedIn,
@@ -203,7 +203,7 @@ public class ResumeController : ControllerBase
         var result = LocalResumeParser.ParseDetailed(text);
         return Ok(new
         {
-            engine = "ats-pro-intelligence",
+            engine = "candeo-intelligence",
             confidence = result.Confidence,
             summary = result.Summary,
             linkedIn = result.LinkedIn,

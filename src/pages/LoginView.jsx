@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Mail, Lock, Building2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -69,7 +69,7 @@ export default function LoginView() {
             <Building2 size={28} />
           </div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)' }}>Welcome Back</h1>
-          <p style={{ color: 'var(--text-3)', fontSize: 14, marginTop: 4 }}>Sign in to continue to ATS Pro</p>
+          <p style={{ color: 'var(--text-3)', fontSize: 14, marginTop: 4 }}>Sign in to continue to Candeo</p>
         </div>
 
         {error && (
@@ -134,7 +134,7 @@ export default function LoginView() {
 
         <div style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: 'var(--text-3)' }}>
           For demo purposes, use:<br/>
-          <strong style={{ color: 'var(--text-2)' }}>admin@atspro.com</strong> / <strong style={{ color: 'var(--text-2)' }}>password123</strong>
+          <strong style={{ color: 'var(--text-2)' }}>admin@candeo.com</strong> / <strong style={{ color: 'var(--text-2)' }}>password123</strong>
         </div>
       </div>
     </div>

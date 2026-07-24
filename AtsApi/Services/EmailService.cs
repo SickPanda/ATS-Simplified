@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
 using AtsApi.Models;
@@ -14,7 +14,7 @@ public class EmailSmtpConfig
     public string User { get; set; } = "";
     public string Password { get; set; } = "";
     public string FromEmail { get; set; } = "";
-    public string FromName { get; set; } = "ATS Pro";
+    public string FromName { get; set; } = "Candeo";
     public bool EnableSsl { get; set; } = true;
 
     public bool IsReady =>
@@ -62,7 +62,7 @@ public class EmailService
         var pass = Get(map, KeyPassword) ?? Env("SMTP_PASSWORD", "Smtp:Password") ?? Env("SMTP_PASS");
         var from = Get(map, KeyFrom) ?? Env("SMTP_FROM", "Smtp:From");
         var fromName = Get(map, KeyFromName) ?? Env("SMTP_FROM_NAME", "Smtp:FromName");
-        if (string.IsNullOrWhiteSpace(fromName)) fromName = "ATS Pro";
+        if (string.IsNullOrWhiteSpace(fromName)) fromName = "Candeo";
 
         var enabledStr = Get(map, KeyEnabled);
         var enabled = string.IsNullOrEmpty(enabledStr)
@@ -97,7 +97,7 @@ public class EmailService
         await Upsert(KeyPort, cfg.Port.ToString());
         await Upsert(KeyUser, cfg.User?.Trim() ?? "");
         await Upsert(KeyFrom, cfg.FromEmail?.Trim() ?? "");
-        await Upsert(KeyFromName, string.IsNullOrWhiteSpace(cfg.FromName) ? "ATS Pro" : cfg.FromName.Trim());
+        await Upsert(KeyFromName, string.IsNullOrWhiteSpace(cfg.FromName) ? "Candeo" : cfg.FromName.Trim());
         await Upsert(KeySsl, cfg.EnableSsl ? "true" : "false");
         if (updatePassword && cfg.Password != null)
             await Upsert(KeyPassword, cfg.Password);

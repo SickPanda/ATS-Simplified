@@ -1,4 +1,4 @@
-# ATS Pro — Staffing Applicant Tracking System
+﻿# Candeo — Staffing Applicant Tracking System
 
 Modern staffing ATS built to compete on the features recruiters actually use day-to-day: **internal talent ranking**, **pipeline + submittals**, **placements with margin**, and **AI-assisted resume parse** — designed to run on **Azure free tier**.
 
@@ -35,8 +35,8 @@ npm run dev
 
 Default logins:
 
-- `admin@atspro.com` / `password123`
-- `recruiter@atspro.com` / `password123`
+- `admin@candeo.com` / `password123`
+- `recruiter@candeo.com` / `password123`
 
 Add a Gemini key under **Settings → Integrations** for resume parsing and email drafts.
 

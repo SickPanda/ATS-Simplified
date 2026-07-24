@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using AtsApi.Models;
 using AtsApi.Services;
@@ -976,7 +976,7 @@ public class AtsController : ControllerBase
         public string User { get; set; } = "";
         public string? Password { get; set; }
         public string FromEmail { get; set; } = "";
-        public string FromName { get; set; } = "ATS Pro";
+        public string FromName { get; set; } = "Candeo";
         public bool EnableSsl { get; set; } = true;
     }
 
@@ -1012,7 +1012,7 @@ public class AtsController : ControllerBase
             User = dto.User ?? "",
             Password = dto.Password ?? existing.Password,
             FromEmail = dto.FromEmail ?? "",
-            FromName = dto.FromName ?? "ATS Pro",
+            FromName = dto.FromName ?? "Candeo",
             EnableSsl = dto.EnableSsl
         };
         var updatePass = !string.IsNullOrEmpty(dto.Password);
@@ -1036,9 +1036,9 @@ public class AtsController : ControllerBase
 
         var (ok, status, error) = await _email.SendAsync(
             to,
-            "ATS Pro User",
-            "ATS Pro — test email",
-            "This is a test message from ATS Pro. If you received it, SMTP is configured correctly.",
+            "Candeo User",
+            "Candeo — test email",
+            "This is a test message from Candeo. If you received it, SMTP is configured correctly.",
             null,
             User.FindFirstValue(ClaimTypes.Email));
 
@@ -1110,8 +1110,8 @@ public class AtsController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.RawText) || req.RawText.Trim().Length < 10)
             return BadRequest("Paste more resume text.");
 
-        // In-app only — ATS Pro Intelligence (no external AI)
-        var detailed = LocalResumeParser.ParseDetailed(req.RawText, "ATS Pro Intelligence");
+        // In-app only — Candeo Intelligence (no external AI)
+        var detailed = LocalResumeParser.ParseDetailed(req.RawText, "Candeo Intelligence");
         var c = detailed.Candidate;
         c.Ownership = CurrentUserDisplayName();
 
@@ -1127,10 +1127,10 @@ public class AtsController : ControllerBase
         await _context.SaveChangesAsync();
 
         EnqueueActivity(c.Id, "System",
-            $"ATS Pro Intelligence · confidence {detailed.Confidence}% · Quick Parse (in-app, no external AI)");
+            $"Candeo Intelligence · confidence {detailed.Confidence}% · Quick Parse (in-app, no external AI)");
         await _context.SaveChangesAsync();
 
-        return Ok(new { candidate = c, confidence = detailed.Confidence, engine = "ats-pro-intelligence" });
+        return Ok(new { candidate = c, confidence = detailed.Confidence, engine = "candeo-intelligence" });
     }
 
     // -- ANALYTICS --

@@ -1,4 +1,4 @@
-# Hosting ATS Pro on Azure Free Tier
+﻿# Hosting Candeo on Azure Free Tier
 
 This app is packaged so **frontend + API run as one process** — the cheapest path on Azure free offerings.
 
@@ -76,7 +76,7 @@ az webapp deployment source config-zip -g rg-atspro -n atspro-YOURNAME --src ..\
 ### 6. Smoke test
 
 - `https://atspro-YOURNAME.azurewebsites.net/api/health`
-- Login: `admin@atspro.com` / your `DEMO_PASSWORD`
+- Login: `admin@candeo.com` / your `DEMO_PASSWORD`
 
 ---
 

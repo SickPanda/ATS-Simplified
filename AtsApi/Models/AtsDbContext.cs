@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
@@ -64,8 +64,8 @@ public class AtsDbContext : IdentityDbContext<IdentityUser>
 
         // Seed Initial Data
         modelBuilder.Entity<User>().HasData(
-            new User { Id = 1, Name = "Admin User", Email = "admin@atspro.com", Password = "password123", Role = "Admin" },
-            new User { Id = 2, Name = "Recruiter", Email = "recruiter@atspro.com", Password = "password123", Role = "Recruiter" }
+            new User { Id = 1, Name = "Admin User", Email = "admin@candeo.com", Password = "password123", Role = "Admin" },
+            new User { Id = 2, Name = "Recruiter", Email = "recruiter@candeo.com", Password = "password123", Role = "Recruiter" }
         );
 
         modelBuilder.Entity<Client>().HasData(

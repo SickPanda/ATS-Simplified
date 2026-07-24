@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Key, CheckCircle2, XCircle, Zap, Shield, Building2, User, Globe, CreditCard, Mail, Phone, MapPin, Camera, Save, RefreshCw, Bell, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -23,7 +23,7 @@ export default function SettingsView() {
   // --- Email SMTP ---
   const [emailCfg, setEmailCfg] = useState({
     enabled: true, host: '', port: 587, user: '', password: '',
-    fromEmail: '', fromName: 'ATS Pro', enableSsl: true, hasPassword: false, mode: 'log_only',
+    fromEmail: '', fromName: 'Candeo', enableSsl: true, hasPassword: false, mode: 'log_only',
   });
   const [emailSaved, setEmailSaved] = useState(false);
   const [emailTestMsg, setEmailTestMsg] = useState('');
@@ -32,12 +32,12 @@ export default function SettingsView() {
 
   // --- Company Profile state ---
   const [company, setCompany] = useState({
-    name: 'ATS Pro Demo',
-    website: 'https://atspro.app',
+    name: 'Candeo Demo',
+    website: 'https://candeo.app',
     industry: 'Staffing & Recruiting',
     size: '11-50 employees',
     phone: '+1 (555) 000-1234',
-    email: 'hr@atspro.app',
+    email: 'hr@candeo.app',
     street: '1600 Amphitheatre Pkwy',
     city: 'Mountain View',
     state: 'CA',
@@ -52,7 +52,7 @@ export default function SettingsView() {
   const [profile, setProfile] = useState({
     fullName: user?.name || 'Admin User',
     title: 'Senior Recruiter',
-    email: user?.email || 'admin@atspro.com',
+    email: user?.email || 'admin@candeo.com',
     phone: '+1 (555) 123-4567',
     timezone: 'America/New_York',
     notifyNewCandidate: true,
@@ -85,7 +85,7 @@ export default function SettingsView() {
           user: d.user || '',
           password: '',
           fromEmail: d.fromEmail || '',
-          fromName: d.fromName || 'ATS Pro',
+          fromName: d.fromName || 'Candeo',
           enableSsl: d.enableSsl !== false,
           hasPassword: !!d.hasPassword,
           mode: d.mode || 'log_only',
@@ -452,14 +452,14 @@ export default function SettingsView() {
               <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 3 }}>Connect AI, email providers, and third-party tools</p>
             </div>
 
-            {/* ATS Pro Intelligence — in-app only */}
+            {/* Candeo Intelligence — in-app only */}
             <div className="card" style={{ padding: 24, border: '1px solid rgba(4,120,87,0.28)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--success-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Shield size={17} color="var(--success)" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>ATS Pro Intelligence</h3>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>Candeo Intelligence</h3>
                   <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 1 }}>
                     In-app resume engine · no external AI · data stays on your server
                   </p>

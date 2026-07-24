@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import { Briefcase, MapPin, ArrowLeft, Upload, CheckCircle, Building2 } from 'lucide-react';
 
 function CareersHome() {
   const [jobs, setJobs] = useState([]);
-  const [brand, setBrand] = useState({ companyName: 'ATS Pro', tagline: "We're hiring" });
+  const [brand, setBrand] = useState({ companyName: 'Candeo', tagline: "We're hiring" });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -240,7 +240,7 @@ export default function CareersPortal() {
         <Link to="/careers" style={{ fontWeight: 800, color: 'var(--text-1)', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Careers
         </Link>
-        <Link to="/" style={{ fontSize: 12.5, color: 'var(--text-3)', textDecoration: 'none' }}>ATS Pro</Link>
+        <Link to="/" style={{ fontSize: 12.5, color: 'var(--text-3)', textDecoration: 'none' }}>Candeo</Link>
       </header>
       <Routes>
         <Route index element={<CareersHome />} />

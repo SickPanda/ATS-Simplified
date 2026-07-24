@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import {
   Plug, Briefcase, MessageSquare, Building2, ShieldCheck, Calculator,
   CheckCircle2, ExternalLink, Search, Link2, Unlink
@@ -156,7 +156,7 @@ export default function IntegrationsView() {
         <Plug size={18} color="var(--primary)" style={{ marginTop: 2, flexShrink: 0 }} />
         <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.55 }}>
           <strong style={{ color: 'var(--text-1)' }}>How this maps to Ceipal:</strong> they win on connectors to Indeed, Dice, LinkedIn RSC, Outlook/Teams, Fieldglass, Checkr, QuickBooks, etc.
-          ATS Pro stores connection credentials here (API key / webhook) so your team can wire live partners without leaving the product.
+          Candeo stores connection credentials here (API key / webhook) so your team can wire live partners without leaving the product.
           Full OAuth for each board is partner-specific and enabled as you get API access.
         </div>
       </div>
