@@ -2,6 +2,20 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
+function normalizeUser(userData) {
+  if (!userData) return null;
+  const email = userData.email || userData.Email || '';
+  const roles = userData.roles || userData.Roles || [];
+  const nameFromEmail = email.includes('@') ? email.split('@')[0] : email;
+  return {
+    ...userData,
+    email,
+    roles,
+    name: userData.name || userData.Name || nameFromEmail || 'User',
+    role: userData.role || userData.Role || roles[0] || 'Recruiter',
+  };
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -19,7 +33,7 @@ export function AuthProvider({ children }) {
         throw new Error('Invalid token');
       })
       .then(userData => {
-        setUser(userData);
+        setUser(normalizeUser(userData));
       })
       .catch(() => {
         localStorage.removeItem('token');
@@ -62,9 +76,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = (token, userData) => {
+    const normalized = normalizeUser(userData);
     localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(normalized));
+    setUser(normalized);
   };
 
   const logout = () => {

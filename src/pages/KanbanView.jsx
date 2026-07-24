@@ -1,31 +1,46 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { ArrowLeft, UserPlus, X, GripVertical, Calendar, Send, CalendarPlus, CheckCircle, DollarSign, AlertCircle, CheckCircle as CheckCircleIcon } from 'lucide-react';
+import {
+  ArrowLeft, UserPlus, X, Search, Calendar, Send, CalendarPlus,
+  CheckCircle2, AlertCircle, ChevronRight, Sparkles, Phone, Mail
+} from 'lucide-react';
+import RateFields from '../components/RateFields';
+import { STAGES, getStage, ACTIVE_STEPS } from '../lib/stages';
+import StageProgress from '../components/StageProgress';
 
-const COLUMNS = [
-  { id: 'Applied',   label: 'Applied',   color: '#22d3ee' },
-  { id: 'Screened',  label: 'Screened',  color: '#a78bfa' },
-  { id: 'Interview', label: 'Interview', color: '#f59e0b' },
-  { id: 'Offer',     label: 'Offer',     color: '#6d5cff' },
-  { id: 'Hired',     label: 'Hired',     color: '#10b981' },
-  { id: 'Rejected',  label: 'Rejected',  color: '#f43f5e' },
+/**
+ * Staffing pipeline — list + stage model (not Kanban).
+ * Stage colors = ordered blue ladder (shared app-wide via stages.js).
+ */
+
+const AVATARS = [
+  { bg: '#eff6ff', fg: '#1d4ed8' },
+  { bg: '#dbeafe', fg: '#1e40af' },
+  { bg: '#f1f5f9', fg: '#475569' },
+  { bg: '#e0e7ff', fg: '#3730a3' },
+  { bg: '#ecfdf5', fg: '#047857' },
+  { bg: '#f8fafc', fg: '#334155' },
 ];
 
-const AVATAR_COLORS = [
-  ['#6d5cff','#1a1650'],['#22d3ee','#0a3040'],['#10b981','#0a2820'],
-  ['#f59e0b','#3d2800'],['#f43f5e','#3d0f18'],['#a78bfa','#1e1040'],
-];
-function getInitials(name) { return name?.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)||'??'; }
-function getAvatarColors(name) {
-  let h=0; for(let i=0;i<(name?.length||0);i++) h=(h*31+name.charCodeAt(i))%AVATAR_COLORS.length;
-  return AVATAR_COLORS[Math.abs(h)];
+function initials(name) {
+  return name?.split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??';
 }
-
-function ScorePill({ score }) {
-  if (score === 0) return null;
-  const cls = score >= 70 ? 'score-hi' : score >= 40 ? 'score-mid' : 'score-lo';
-  return <span className={`score ${cls}`}>{score}% match</span>;
+function avatarStyle(name) {
+  let h = 0;
+  for (let i = 0; i < (name?.length || 0); i++) h = (h * 31 + name.charCodeAt(i)) % AVATARS.length;
+  return AVATARS[Math.abs(h)];
+}
+function stageMeta(id) {
+  const s = getStage(id);
+  return { ...s, color: s.colorHex, soft: s.softHex };
+}
+function timeAgo(dateStr) {
+  if (!dateStr) return '—';
+  const d = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  if (d <= 0) return 'Today';
+  if (d === 1) return '1 day';
+  if (d < 14) return `${d} days`;
+  return new Date(dateStr).toLocaleDateString();
 }
 
 export default function KanbanView({ isEmbedded = false }) {
@@ -33,69 +48,73 @@ export default function KanbanView({ isEmbedded = false }) {
   const [job, setJob] = useState(null);
   const [applications, setApplications] = useState([]);
   const [candidates, setCandidates] = useState([]);
+  const [stageFilter, setStageFilter] = useState('All');
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState(null);
   const [assigning, setAssigning] = useState(null);
   const [showAssign, setShowAssign] = useState(false);
+  const [assignSearch, setAssignSearch] = useState('');
   const [submittingApp, setSubmittingApp] = useState(null);
   const [submittalSummary, setSubmittalSummary] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  
-  // Interview state
   const [interviewingApp, setInterviewingApp] = useState(null);
   const [interviewDate, setInterviewDate] = useState('');
-  
-  // Placement state
   const [placingApp, setPlacingApp] = useState(null);
   const [payRate, setPayRate] = useState('');
   const [billRate, setBillRate] = useState('');
-  
+  const [rateUnit, setRateUnit] = useState('Hourly');
   const [toast, setToast] = useState(null);
-  const [enabled, setEnabled] = useState(false);
+  const [movingId, setMovingId] = useState(null);
 
   const showToast = (msg, type = 'error') => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => setToast(null), 3500);
   };
 
+  const fetchApps = () =>
+    fetch(`/api/ats/jobs/${id}/applications`)
+      .then(r => r.json())
+      .then(data => {
+        setApplications(data);
+        setSelectedId(prev => {
+          if (prev && data.some(a => a.id === prev)) return prev;
+          return data[0]?.id ?? null;
+        });
+      });
+
   useEffect(() => {
-    fetch('/api/ats/jobs').then(r=>r.json()).then(jobs=>{
-      setJob(jobs.find(j=>j.id===parseInt(id)));
+    fetch('/api/ats/jobs').then(r => r.json()).then(jobs => {
+      setJob(jobs.find(j => j.id === parseInt(id)));
     });
     fetchApps();
-    fetch('/api/ats/candidates').then(r=>r.json()).then(setCandidates);
-
-    const animation = requestAnimationFrame(() => setEnabled(true));
-    return () => {
-      cancelAnimationFrame(animation);
-      setEnabled(false);
-    };
+    fetch('/api/ats/candidates').then(r => r.json()).then(setCandidates);
   }, [id]);
 
-  const fetchApps = () =>
-    fetch(`/api/ats/jobs/${id}/applications`).then(r=>r.json()).then(setApplications);
-
-  const handleDragEnd = async ({ source, destination, draggableId }) => {
-    if (!destination || source.droppableId === destination.droppableId) return;
-    const appId = parseInt(draggableId);
-    const newStage = destination.droppableId;
-    setApplications(prev => prev.map(a => a.id===appId ? {...a, stage:newStage} : a));
-    await fetch(`/api/ats/applications/${appId}/stage`, {
-      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(newStage),
+  const setStage = async (app, stage) => {
+    if (app.stage === stage) return;
+    setMovingId(app.id);
+    setApplications(prev => prev.map(a => a.id === app.id ? { ...a, stage } : a));
+    await fetch(`/api/ats/applications/${app.id}/stage`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(stage),
     });
+    setMovingId(null);
   };
 
   const assignCandidate = async (candidateId) => {
     setAssigning(candidateId);
     const r = await fetch('/api/ats/applications', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ candidateId, jobId: parseInt(id), matchScore: 0 }),
     });
-    if (r.ok) { 
-      setShowAssign(false); 
-      fetchApps();
-      showToast('Candidate assigned successfully.', 'success');
-    }
-    else showToast(await r.text());
+    if (r.ok) {
+      setShowAssign(false);
+      setAssignSearch('');
+      await fetchApps();
+      showToast('Candidate added to this requirement', 'success');
+    } else showToast(await r.text());
     setAssigning(null);
   };
 
@@ -109,17 +128,15 @@ export default function KanbanView({ isEmbedded = false }) {
         candidateId: submittingApp.candidateId,
         clientId: job.clientId,
         jobId: job.id,
-        summary: submittalSummary
-      })
+        summary: submittalSummary,
+      }),
     });
     setSubmitting(false);
     if (r.ok) {
       setSubmittingApp(null);
       setSubmittalSummary('');
-      showToast('Submitted successfully.', 'success');
-    } else {
-      showToast(await r.text());
-    }
+      showToast('Submitted to client', 'success');
+    } else showToast(await r.text());
   };
 
   const scheduleInterview = async (e) => {
@@ -127,9 +144,8 @@ export default function KanbanView({ isEmbedded = false }) {
     const res = await fetch(`/api/ats/applications/${interviewingApp.id}/interviews`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scheduledAt: new Date(interviewDate).toISOString() })
+      body: JSON.stringify({ scheduledAt: new Date(interviewDate).toISOString() }),
     });
-    
     if (res.ok) {
       const data = await res.json();
       if (data.ics) {
@@ -140,13 +156,20 @@ export default function KanbanView({ isEmbedded = false }) {
         a.download = `interview_${interviewingApp.candidate?.name?.replace(/\s+/g, '_') || 'invite'}.ics`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast('Calendar invite (.ics) generated!', 'success');
+        showToast('Calendar invite downloaded', 'success');
       }
+      await setStage(interviewingApp, 'Interview');
     }
-    
     setInterviewingApp(null);
     setInterviewDate('');
     fetchApps();
+  };
+
+  const openPlacement = (app) => {
+    setPlacingApp(app);
+    setBillRate(job?.billRate != null ? String(job.billRate) : '');
+    setPayRate(job?.payRate != null ? String(job.payRate) : '');
+    setRateUnit(job?.rateUnit || 'Hourly');
   };
 
   const markPlaced = async (e) => {
@@ -154,448 +177,563 @@ export default function KanbanView({ isEmbedded = false }) {
     await fetch(`/api/ats/applications/${placingApp.id}/placements`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        payRate: parseFloat(payRate), 
+      body: JSON.stringify({
+        payRate: parseFloat(payRate),
         billRate: parseFloat(billRate),
-        startDate: new Date().toISOString()
-      })
+        rateUnit: rateUnit || 'Hourly',
+        startDate: new Date().toISOString(),
+      }),
     });
     setPlacingApp(null);
     setPayRate('');
     setBillRate('');
+    setRateUnit('Hourly');
     fetchApps();
+    showToast('Placement recorded', 'success');
   };
 
-  if (!enabled || !job) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', gap:10, color:'var(--text-3)' }}>
-      <div className="anim-spin" style={{width:18,height:18,border:'2px solid var(--border)',borderTopColor:'var(--primary)',borderRadius:'50%'}} />
-      Loading pipeline...
-    </div>
-  );
+  const counts = useMemo(() => {
+    const m = { All: applications.length };
+    STAGES.forEach(s => { m[s.id] = 0; });
+    applications.forEach(a => { if (m[a.stage] != null) m[a.stage]++; });
+    return m;
+  }, [applications]);
 
+  const rows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return applications
+      .filter(a => stageFilter === 'All' || a.stage === stageFilter)
+      .filter(a => {
+        if (!q) return true;
+        const n = a.candidate?.name?.toLowerCase() || '';
+        const r = a.candidate?.role?.toLowerCase() || '';
+        const e = a.candidate?.email?.toLowerCase() || '';
+        return n.includes(q) || r.includes(q) || e.includes(q);
+      })
+      .sort((a, b) => {
+        // Active stages first, then by match score, then recency
+        const order = STAGES.map(s => s.id);
+        const di = order.indexOf(a.stage) - order.indexOf(b.stage);
+        if (di !== 0) return di;
+        return (b.matchScore || 0) - (a.matchScore || 0);
+      });
+  }, [applications, stageFilter, search]);
+
+  const selected = rows.find(a => a.id === selectedId) || applications.find(a => a.id === selectedId) || null;
   const assignedIds = new Set(applications.map(a => a.candidateId ?? a.candidate?.id));
+  const pool = candidates.filter(c => !assignedIds.has(c.id));
+  const poolFiltered = pool.filter(c => {
+    const q = assignSearch.trim().toLowerCase();
+    if (!q) return true;
+    return c.name?.toLowerCase().includes(q) || c.role?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q);
+  });
+
+  if (!job) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-3)', gap: 10 }}>
+        <div className="anim-spin" style={{ width: 18, height: 18, border: '2px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%' }} />
+        Loading requirement…
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', position: 'relative' }}>
-      {/* Toast Notification */}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)', position: 'relative' }}>
       {toast && (
         <div style={{
-          position: 'fixed', bottom: 32, right: 32, zIndex: 9999,
-          background: 'var(--surface)', border: `1px solid ${toast.type === 'error' ? 'var(--rose)' : 'var(--emerald)'}`,
-          padding: '12px 16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.4)', animation: 'slideRight 0.3s cubic-bezier(0.16,1,0.3,1)'
+          position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
+          background: '#fff', border: `1px solid ${toast.type === 'error' ? 'rgba(185,28,28,0.25)' : 'rgba(4,120,87,0.3)'}`,
+          padding: '12px 16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10,
+          boxShadow: '0 12px 40px rgba(15,23,42,0.12)',
         }}>
-          {toast.type === 'error' ? <AlertCircle size={16} color="var(--rose)" /> : <CheckCircleIcon size={16} color="var(--emerald)" />}
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{toast.msg}</span>
-          <button className="btn-icon" onClick={() => setToast(null)}><X size={14} /></button>
+          {toast.type === 'error' ? <AlertCircle size={16} color="var(--danger)" /> : <CheckCircle2 size={16} color="var(--success)" />}
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{toast.msg}</span>
+          <button type="button" className="btn-icon" onClick={() => setToast(null)}><X size={14} /></button>
         </div>
       )}
 
-      {/* Sub-header (only shown if NOT embedded) */}
-      {!isEmbedded ? (
+      {/* Header */}
+      <div style={{
+        flexShrink: 0, background: '#fff', borderBottom: '1px solid var(--border)',
+        padding: isEmbedded ? '12px 20px' : '14px 24px',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {!isEmbedded && (
+                <Link to="/jobs" className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }}>
+                  <ArrowLeft size={14} /> Jobs
+                </Link>
+              )}
+              <h2 style={{
+                fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800,
+                fontSize: isEmbedded ? 16 : 18, color: 'var(--text-1)', letterSpacing: '-0.02em', margin: 0,
+              }}>
+                {isEmbedded ? 'Candidates on this req' : job.title}
+              </h2>
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)',
+              }}>
+                {applications.length} total
+              </span>
+            </div>
+            <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '4px 0 0' }}>
+              Status per person · progress bars show how far along they are (1→{ACTIVE_STEPS})
+            </p>
+          </div>
+          <button type="button" className="btn btn-primary" style={{ fontSize: 13 }} onClick={() => setShowAssign(true)}>
+            <UserPlus size={14} /> Add candidate
+          </button>
+        </div>
+
+        {/* Color legend — one ladder, not random hues */}
         <div style={{
-          padding:'16px 24px',
-          borderBottom:'1px solid rgba(255, 255, 255, 0.08)',
-          display:'flex', alignItems:'center', justifyContent:'space-between',
-          background:'transparent',
-          flexShrink:0,
+          marginTop: 12, padding: '10px 12px', borderRadius: 10,
+          background: 'var(--surface-2)', border: '1px solid var(--border)',
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
         }}>
-          <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-            <Link to="/jobs" style={{ display:'flex',alignItems:'center',gap:5,fontSize:12.5,color:'var(--text-3)',textDecoration:'none',fontWeight:500 }}
-              onMouseEnter={e=>e.currentTarget.style.color='var(--text-1)'}
-              onMouseLeave={e=>e.currentTarget.style.color='var(--text-3)'}
+          <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-4)', letterSpacing: '0.06em' }}>
+            PROGRESS
+          </span>
+          {STAGES.filter(s => s.id !== 'Rejected').map((s, i) => (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              {i > 0 && <ChevronRight size={12} color="var(--text-4)" />}
+              <span style={{
+                width: 10, height: 10, borderRadius: 2, background: s.colorHex,
+              }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)' }}>
+                {s.step}. {s.label}
+              </span>
+            </div>
+          ))}
+          <span style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 4px' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: getStage('Rejected').colorHex }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)' }}>Out = Rejected</span>
+          </div>
+        </div>
+
+        {/* Stage filters */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setStageFilter('All')}
+            style={filterChip(stageFilter === 'All', '#0f172a', '#e2e8f0')}
+          >
+            All <strong style={{ marginLeft: 4 }}>{counts.All}</strong>
+          </button>
+          {STAGES.map(s => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setStageFilter(s.id)}
+              style={filterChip(stageFilter === s.id, s.colorHex, s.softHex)}
             >
-              <ArrowLeft size={14} /> Jobs
-            </Link>
-            <span style={{ color:'var(--border-hover)', fontSize:14 }}>/</span>
-            <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:15, color:'var(--text-1)' }}>
-              {job.title}
-            </h2>
-            <span className="badge badge-primary">Pipeline</span>
+              <span style={{ width: 7, height: 7, borderRadius: 2, background: s.colorHex, display: 'inline-block' }} />
+              {s.label} <strong style={{ marginLeft: 4 }}>{counts[s.id] || 0}</strong>
+            </button>
+          ))}
+          <div className="input-search" style={{ marginLeft: 'auto', width: 220, height: 34, padding: '4px 10px' }}>
+            <Search size={13} color="var(--text-4)" />
+            <input
+              placeholder="Search name, role, email…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ fontSize: 12.5 }}
+            />
           </div>
-          <button className="btn btn-ghost" style={{ fontSize:13 }} onClick={()=>setShowAssign(true)}>
-            <UserPlus size={14} /> Assign Candidate
-          </button>
         </div>
-      ) : (
-        /* Slim embedded toolbar */
-        <div style={{ padding: '16px 32px 8px', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
-          <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={()=>setShowAssign(true)}>
-            <UserPlus size={14} /> Assign Candidate
-          </button>
-        </div>
-      )}
-
-      {/* Kanban board */}
-      <div style={{ flex:1, overflow:'auto', padding:'12px 32px 32px' }}>
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div style={{ display:'flex', gap:18, height:'100%', minWidth:'max-content' }}>
-            {COLUMNS.map(col => {
-              const colApps = applications.filter(a=>a.stage===col.id);
-              return (
-                <div key={col.id} style={{
-                  width:290, flexShrink:0, display:'flex', flexDirection:'column',
-                  background:'rgba(17, 19, 31, 0.45)',
-                  backdropFilter: 'blur(20px)',
-                  WebkitBackdropFilter: 'blur(20px)',
-                  borderRadius:16,
-                  border:'1px solid rgba(255, 255, 255, 0.05)',
-                  borderTop:`3px solid ${col.color}`,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-                  overflow:'hidden',
-                }}>
-                  {/* Column header */}
-                  <div style={{ padding:'14px 18px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', justifyContent:'space-between', alignItems:'center', background: 'rgba(255,255,255,0.01)' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:8,height:8,borderRadius:'50%',background:col.color,boxShadow:`0 0 10px ${col.color}` }} />
-                      <span style={{ fontSize:13.5, fontWeight:700, color:'var(--text-1)', letterSpacing: '-0.01em' }}>{col.label}</span>
-                    </div>
-                    <span style={{
-                      fontSize:11, fontWeight:800,
-                      background:'rgba(255,255,255,0.08)',
-                      color:'var(--text-2)',
-                      padding:'3px 9px', borderRadius:99,
-                    }}>{colApps.length}</span>
-                  </div>
-
-                  <Droppable droppableId={col.id}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        style={{
-                          flex:1, padding:'12px',
-                          display:'flex', flexDirection:'column', gap:10,
-                          minHeight:60,
-                          background: snapshot.isDraggingOver ? `linear-gradient(to bottom, rgba(${col.color==='#22d3ee'?'34,211,238':col.color==='#a78bfa'?'167,139,250':col.color==='#f59e0b'?'245,158,11':col.color==='#6d5cff'?'109,92,255':col.color==='#10b981'?'16,185,129':'244,63,94'},0.06), transparent)` : 'transparent',
-                          transition:'background 0.3s ease',
-                          overflowY:'auto',
-                        }}
-                      >
-                        {colApps.map((app, index) => {
-                          const name = app.candidate?.name ?? '?';
-                          const [fg, bg] = getAvatarColors(name);
-                          return (
-                            <Draggable key={app.id} draggableId={app.id.toString()} index={index}>
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className="kanban-card"
-                                  style={{
-                                    ...provided.draggableProps.style,
-                                    background: snapshot.isDragging ? 'rgba(30, 34, 56, 0.95)' : 'rgba(23, 27, 44, 0.65)',
-                                    backdropFilter: 'blur(12px)',
-                                    WebkitBackdropFilter: 'blur(12px)',
-                                    border:`1px solid ${snapshot.isDragging ? col.color : 'rgba(255, 255, 255, 0.06)'}`,
-                                    borderRadius:12,
-                                    padding:'14px',
-                                    boxShadow: snapshot.isDragging ? `0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px ${col.color}` : '0 4px 16px rgba(0,0,0,0.15)',
-                                    cursor:'grab',
-                                  }}
-                                >
-                                  <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
-                                    <div className="avatar" style={{ background:bg, color:fg, flexShrink:0, width:32, height:32, fontSize:11.5, fontWeight: 700 }}>
-                                      {getInitials(name)}
-                                    </div>
-                                    <div style={{ flex:1, minWidth:0 }}>
-                                      <div style={{ fontSize:13.5, fontWeight:700, color:'var(--text-1)', lineHeight:1.3, letterSpacing: '-0.01em' }}>{name}</div>
-                                      <div style={{ fontSize:11.5, color:'var(--text-3)', marginTop:2, fontWeight: 500 }}>{app.candidate?.role}</div>
-                                    </div>
-                                  </div>
-                                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:14 }}>
-                                    <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'var(--text-4)' }}>
-                                      <Calendar size={12} />
-                                      {new Date(app.appliedAt).toLocaleDateString()}
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                      {job.clientId && col.id !== 'Rejected' && (
-                                        <button 
-                                          className="btn-icon" 
-                                          title="Submit to Client" 
-                                          style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.05)', borderRadius: 6 }}
-                                          onClick={() => setSubmittingApp(app)}
-                                        >
-                                          <Send size={12} color="var(--cyan)" />
-                                        </button>
-                                      )}
-                                      {col.id === 'Interview' && (
-                                        <button 
-                                          className="btn-icon" 
-                                          title="Schedule Interview" 
-                                          style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.05)', borderRadius: 6 }}
-                                          onClick={() => setInterviewingApp(app)}
-                                        >
-                                          <CalendarPlus size={12} color="var(--amber)" />
-                                        </button>
-                                      )}
-                                      {(col.id === 'Offer' || col.id === 'Hired') && (
-                                        <button 
-                                          className="btn-icon" 
-                                          title="Mark Placed & Set Margin" 
-                                          style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.05)', borderRadius: 6 }}
-                                          onClick={() => setPlacingApp(app)}
-                                        >
-                                          <CheckCircle size={12} color="var(--emerald)" />
-                                        </button>
-                                      )}
-                                      <ScorePill score={app.matchScore} />
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </Draggable>
-                          );
-                        })}
-                        {provided.placeholder}
-                        {colApps.length === 0 && !snapshot.isDraggingOver && (
-                          <div style={{ textAlign:'center', padding:'24px 0', fontSize:12, color:'var(--text-4)', fontWeight: 500 }}>
-                            Drop here
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </Droppable>
-                </div>
-              );
-            })}
-          </div>
-        </DragDropContext>
       </div>
 
-      {/* Assign Modal */}
+      {/* Split: list + detail */}
+      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: selected ? '1fr 340px' : '1fr', gap: 0 }}>
+        {/* List */}
+        <div style={{ overflow: 'auto', borderRight: selected ? '1px solid var(--border)' : 'none' }}>
+          {rows.length === 0 ? (
+            <div className="empty-state" style={{ padding: 56 }}>
+              <UserPlus size={32} />
+              <p style={{ fontWeight: 700, color: 'var(--text-2)', fontSize: 15 }}>
+                {applications.length === 0 ? 'No candidates on this requirement yet' : 'No matches for this filter'}
+              </p>
+              <p style={{ fontSize: 13, maxWidth: 320 }}>
+                {applications.length === 0
+                  ? 'Add people from your talent bench and move them through stages with the status control.'
+                  : 'Try another stage tab or clear search.'}
+              </p>
+              {applications.length === 0 && (
+                <button type="button" className="btn btn-primary" style={{ marginTop: 8 }} onClick={() => setShowAssign(true)}>
+                  <UserPlus size={14} /> Add first candidate
+                </button>
+              )}
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#fff', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 2 }}>
+                  <th style={th}>Candidate</th>
+                  <th style={th}>Stage</th>
+                  <th style={th}>Level</th>
+                  <th style={th}>Match</th>
+                  <th style={th}>In pipeline</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(app => {
+                  const name = app.candidate?.name || 'Unknown';
+                  const av = avatarStyle(name);
+                  const st = stageMeta(app.stage);
+                  const active = selectedId === app.id;
+                  return (
+                    <tr
+                      key={app.id}
+                      onClick={() => setSelectedId(app.id)}
+                      style={{
+                        background: active ? 'var(--primary-glow)' : '#fff',
+                        borderBottom: '1px solid var(--border)',
+                        cursor: 'pointer',
+                        boxShadow: active ? 'inset 3px 0 0 var(--primary)' : 'none',
+                      }}
+                    >
+                      <td style={td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 10, background: av.bg, color: av.fg,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0,
+                          }}>
+                            {initials(name)}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-1)' }}>{name}</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 1 }}>
+                              {app.candidate?.role || '—'}
+                              {app.candidate?.workAuthorization ? ` · ${app.candidate.workAuthorization}` : ''}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={td} onClick={e => e.stopPropagation()}>
+                        <select
+                          value={app.stage}
+                          disabled={movingId === app.id}
+                          onChange={e => setStage(app, e.target.value)}
+                          style={{
+                            appearance: 'none',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            padding: '6px 28px 6px 10px',
+                            borderRadius: 8,
+                            border: `1px solid ${st.color}40`,
+                            background: `${st.soft} url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center`,
+                            color: st.color,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            minWidth: 120,
+                          }}
+                        >
+                          {STAGES.map(s => (
+                            <option key={s.id} value={s.id}>
+                              {s.step > 0 ? `${s.step}. ` : ''}{s.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={td}>
+                        <StageProgress stageId={app.stage} />
+                        <div style={{ fontSize: 10, color: 'var(--text-4)', marginTop: 3, fontWeight: 600 }}>
+                          {st.step > 0 ? `${st.step}/${ACTIVE_STEPS}` : 'Out'}
+                        </div>
+                      </td>
+                      <td style={td}>
+                        {app.matchScore > 0 ? (
+                          <span className={`score ${app.matchScore >= 70 ? 'score-hi' : app.matchScore >= 40 ? 'score-mid' : 'score-lo'}`}>
+                            {app.matchScore}%
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-4)', fontSize: 12 }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ ...td, color: 'var(--text-3)', fontSize: 12.5 }}>
+                        {timeAgo(app.appliedAt)}
+                      </td>
+                      <td style={{ ...td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {job.clientId && app.stage !== 'Rejected' && app.stage !== 'Hired' && (
+                            <button type="button" style={actionBtn('#0ea5e9')} onClick={() => setSubmittingApp(app)}>
+                              <Send size={12} /> Submit
+                            </button>
+                          )}
+                          {(app.stage === 'Screened' || app.stage === 'Interview' || app.stage === 'Applied') && (
+                            <button type="button" style={actionBtn('#b45309')} onClick={() => setInterviewingApp(app)}>
+                              <CalendarPlus size={12} /> Interview
+                            </button>
+                          )}
+                          {(app.stage === 'Offer' || app.stage === 'Interview' || app.stage === 'Hired') && (
+                            <button type="button" style={actionBtn('#047857')} onClick={() => openPlacement(app)}>
+                              <CheckCircle2 size={12} /> Place
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Detail panel */}
+        {selected && (
+          <aside style={{
+            background: '#fff', overflowY: 'auto', padding: '20px 18px 28px',
+            display: 'flex', flexDirection: 'column', gap: 16,
+          }}>
+            {(() => {
+              const name = selected.candidate?.name || 'Unknown';
+              const av = avatarStyle(name);
+              const st = stageMeta(selected.stage);
+              const c = selected.candidate || {};
+              return (
+                <>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{
+                      width: 48, height: 48, borderRadius: 12, background: av.bg, color: av.fg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 15,
+                    }}>
+                      {initials(name)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-1)', letterSpacing: '-0.02em' }}>{name}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 2 }}>{c.role || '—'}</div>
+                      <span style={{
+                        display: 'inline-block', marginTop: 8, fontSize: 11, fontWeight: 700,
+                        padding: '3px 8px', borderRadius: 6, background: st.soft, color: st.color,
+                      }}>
+                        {st.label}
+                      </span>
+                    </div>
+                  </div>
+
+                  {selected.matchScore > 0 && (
+                    <div style={{
+                      padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)',
+                      border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                      <Sparkles size={15} color="var(--primary)" />
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-4)' }}>MATCH TO THIS REQ</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-1)' }}>{selected.matchScore}%</div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {c.email && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-2)' }}>
+                        <Mail size={13} color="var(--text-4)" /> {c.email}
+                      </div>
+                    )}
+                    {c.phone && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-2)' }}>
+                        <Phone size={13} color="var(--text-4)" /> {c.phone}
+                      </div>
+                    )}
+                    {(c.city || c.state) && (
+                      <div style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
+                        {[c.city, c.state].filter(Boolean).join(', ')}
+                      </div>
+                    )}
+                    {c.workAuthorization && (
+                      <div style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
+                        Auth: <strong>{c.workAuthorization}</strong>
+                      </div>
+                    )}
+                    {c.experience && (
+                      <div style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
+                        Exp: <strong>{c.experience}</strong>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-4)', letterSpacing: '0.06em', marginBottom: 8 }}>
+                      STAGE · LEVEL {stageMeta(selected.stage).step || '—'}/{ACTIVE_STEPS}
+                    </div>
+                    <div style={{ marginBottom: 10 }}>
+                      <StageProgress stageId={selected.stage} size={10} />
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {STAGES.map(s => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setStage(selected, s.id)}
+                          style={{
+                            fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+                            border: selected.stage === s.id ? `1.5px solid ${s.colorHex}` : '1px solid var(--border)',
+                            background: selected.stage === s.id ? s.softHex : '#fff',
+                            color: selected.stage === s.id ? s.colorHex : 'var(--text-2)',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {s.step > 0 ? `${s.step}. ` : ''}{s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
+                    {job.clientId && selected.stage !== 'Rejected' && selected.stage !== 'Hired' && (
+                      <button type="button" className="btn btn-primary" style={{ width: '100%' }} onClick={() => setSubmittingApp(selected)}>
+                        <Send size={14} /> Submit to client
+                      </button>
+                    )}
+                    <button type="button" className="btn btn-ghost" style={{ width: '100%' }} onClick={() => setInterviewingApp(selected)}>
+                      <CalendarPlus size={14} /> Schedule interview
+                    </button>
+                    <button type="button" className="btn btn-ghost" style={{ width: '100%', borderColor: 'rgba(4,120,87,0.35)', color: 'var(--success)' }} onClick={() => openPlacement(selected)}>
+                      <CheckCircle2 size={14} /> Place with rates
+                    </button>
+                  </div>
+
+                  <div style={{ fontSize: 11, color: 'var(--text-4)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Calendar size={11} /> Added {timeAgo(selected.appliedAt)}
+                    <ChevronRight size={11} style={{ marginLeft: 'auto' }} />
+                  </div>
+                </>
+              );
+            })()}
+          </aside>
+        )}
+      </div>
+
+      {/* Assign drawer */}
       {showAssign && (
         <>
-          <div className="overlay" onClick={()=>setShowAssign(false)} />
-          <div style={{
-            position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)',
-            width:480, background:'var(--surface)',
-            border:'1px solid var(--border-hover)',
-            borderRadius:16,
-            zIndex:52,
-            animation:'scaleIn 0.28s cubic-bezier(0.16,1,0.3,1) both',
-            maxHeight:'75vh', display:'flex', flexDirection:'column',
-          }}>
-            <div style={{ padding:'20px 24px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <div>
-                <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:16, color:'var(--text-1)' }}>
-                  Assign to Pipeline
-                </h2>
-                <p style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>
-                  {job.title}
-                </p>
+          <div className="overlay" onClick={() => setShowAssign(false)} />
+          <div className="drawer" style={{ width: 420 }}>
+            <div style={{ padding: '20px 22px', borderBottom: '1px solid var(--border)' }}>
+              <h2 style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 17, margin: 0 }}>
+                Add to requirement
+              </h2>
+              <p style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 4 }}>{job.title}</p>
+              <div className="input-search" style={{ marginTop: 12 }}>
+                <Search size={14} color="var(--text-4)" />
+                <input placeholder="Search talent bench…" value={assignSearch} onChange={e => setAssignSearch(e.target.value)} />
               </div>
-              <button className="btn-icon" onClick={()=>setShowAssign(false)}><X size={16} /></button>
             </div>
-            <div style={{ overflowY:'auto', padding:'12px 16px', flex:1 }}>
-              {candidates.filter(c=>!assignedIds.has(c.id)).length === 0 ? (
-                <div className="empty-state"><p>All candidates already assigned.</p></div>
-              ) : (
-                candidates.filter(c=>!assignedIds.has(c.id)).map((c) => {
-                  const [fg, bg] = getAvatarColors(c.name);
-                  return (
-                    <div key={c.id} style={{
-                      display:'flex', alignItems:'center', gap:12,
-                      padding:'10px 10px', borderRadius:10, marginBottom:4,
-                      border:'1px solid transparent',
-                      transition:'all 0.12s ease',
-                      cursor:'pointer',
-                    }}
-                      onMouseEnter={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor='var(--border)'; }}
-                      onMouseLeave={e=>{ e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='transparent'; }}
-                    >
-                      <div className="avatar" style={{ background:bg, color:fg }}>{getInitials(c.name)}</div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontSize:13.5, fontWeight:600, color:'var(--text-1)' }}>{c.name}</div>
-                        <div style={{ fontSize:12, color:'var(--text-3)', marginTop:1 }}>{c.role}</div>
-                      </div>
-                      <button
-                        className="btn btn-primary"
-                        style={{ padding:'5px 14px', fontSize:12 }}
-                        disabled={assigning===c.id}
-                        onClick={()=>assignCandidate(c.id)}
-                      >
-                        {assigning===c.id?'...':'Assign'}
-                      </button>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
+              {poolFiltered.length === 0 ? (
+                <div className="empty-state" style={{ padding: 40 }}>
+                  <p style={{ fontWeight: 600 }}>No available candidates</p>
+                  <p style={{ fontSize: 12 }}>Parse resumes first or everyone is already on this req.</p>
+                </div>
+              ) : poolFiltered.map(c => {
+                const av = avatarStyle(c.name);
+                return (
+                  <div key={c.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+                    borderRadius: 12, marginBottom: 6, border: '1px solid var(--border)', background: '#fff',
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 10, background: av.bg, color: av.fg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12,
+                    }}>
+                      {initials(c.name)}
                     </div>
-                  );
-                })
-              )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 700 }}>{c.name}</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{c.role}</div>
+                    </div>
+                    <button type="button" className="btn btn-primary" style={{ padding: '6px 12px', fontSize: 12 }} disabled={assigning === c.id} onClick={() => assignCandidate(c.id)}>
+                      {assigning === c.id ? '…' : 'Add'}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </>
       )}
 
-      {/* Submittal Modal */}
       {submittingApp && (
         <>
-          <div className="overlay" onClick={()=>setSubmittingApp(null)} />
-          <div className="drawer" style={{ zIndex: 60 }}>
-            <div style={{ padding:'22px 24px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div className="overlay" onClick={() => setSubmittingApp(null)} />
+          <div className="drawer" style={{ width: 420 }}>
+            <div style={{ padding: '20px 22px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
               <div>
-                <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:17, color:'var(--text-1)' }}>
-                  Submit to Client
-                </h2>
-                <p style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>Generate a blinded submittal for the client</p>
+                <h2 style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 17, margin: 0 }}>Submit to client</h2>
+                <p style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 4 }}>{submittingApp.candidate?.name}</p>
               </div>
-              <button className="btn-icon" onClick={()=>setSubmittingApp(null)}><X size={17} /></button>
+              <button type="button" className="btn-icon" onClick={() => setSubmittingApp(null)}><X size={16} /></button>
             </div>
-
-            <form onSubmit={submitToClient} style={{ flex:1, padding:24, display:'flex', flexDirection:'column', gap:20 }}>
-              
-              <div style={{ padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-4)', letterSpacing: '0.05em', marginBottom: 12 }}>BLINDED CANDIDATE PREVIEW</div>
-                <div style={{ display: 'grid', gap: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Name:</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{submittingApp.candidate?.name?.split(' ')[0]} [REDACTED]</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Contact:</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>[REDACTED]</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Role:</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{submittingApp.candidate?.role}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Experience:</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{submittingApp.candidate?.experience}</span>
-                  </div>
-                </div>
-              </div>
-
+            <form onSubmit={submitToClient} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
               <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.03em' }}>
-                  SUBMITTAL SUMMARY / NOTES FOR CLIENT
-                </label>
-                <textarea
-                  className="input"
-                  placeholder="Why is this candidate a great fit?"
-                  required
-                  rows={5}
-                  value={submittalSummary}
-                  onChange={e=>setSubmittalSummary(e.target.value)}
-                />
+                <label className="label">NOTES FOR CLIENT</label>
+                <textarea className="input" rows={5} style={{ resize: 'vertical' }} placeholder="Why they fit…" value={submittalSummary} onChange={e => setSubmittalSummary(e.target.value)} />
               </div>
-
-              <div style={{ display:'flex', gap:10, marginTop:'auto' }}>
-                <button type="button" className="btn btn-ghost" style={{ flex:1 }} onClick={()=>setSubmittingApp(null)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" style={{ flex:2 }} disabled={submitting}>
-                  <Send size={15} style={{ marginRight: 6 }} />
-                  {submitting ? 'Submitting...' : 'Send Submittal'}
-                </button>
+              <div style={{ marginTop: 'auto', display: 'flex', gap: 10 }}>
+                <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setSubmittingApp(null)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={submitting}>{submitting ? 'Sending…' : 'Submit'}</button>
               </div>
             </form>
           </div>
         </>
       )}
 
-      {/* Interview Modal */}
       {interviewingApp && (
         <>
-          <div className="overlay" onClick={()=>setInterviewingApp(null)} />
-          <div className="drawer" style={{ zIndex: 60, width: 420 }}>
-            <div style={{ padding:'22px 24px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div className="overlay" onClick={() => setInterviewingApp(null)} />
+          <div className="drawer" style={{ width: 400 }}>
+            <div style={{ padding: '20px 22px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
               <div>
-                <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:17, color:'var(--text-1)' }}>
-                  Schedule Interview
-                </h2>
-                <p style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>For {interviewingApp.candidate?.name}</p>
+                <h2 style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 17, margin: 0 }}>Schedule interview</h2>
+                <p style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 4 }}>{interviewingApp.candidate?.name}</p>
               </div>
-              <button className="btn-icon" onClick={()=>setInterviewingApp(null)}><X size={17} /></button>
+              <button type="button" className="btn-icon" onClick={() => setInterviewingApp(null)}><X size={16} /></button>
             </div>
-
-            <form onSubmit={scheduleInterview} style={{ flex:1, padding:24, display:'flex', flexDirection:'column', gap:20 }}>
+            <form onSubmit={scheduleInterview} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
               <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.03em' }}>
-                  DATE & TIME
-                </label>
-                <input
-                  type="datetime-local"
-                  className="input"
-                  required
-                  value={interviewDate}
-                  onChange={e=>setInterviewDate(e.target.value)}
-                />
+                <label className="label">DATE & TIME</label>
+                <input type="datetime-local" className="input" required value={interviewDate} onChange={e => setInterviewDate(e.target.value)} />
               </div>
-
-              <div style={{ display:'flex', gap:10, marginTop:'auto' }}>
-                <button type="button" className="btn btn-ghost" style={{ flex:1 }} onClick={()=>setInterviewingApp(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ flex:2 }}>Schedule</button>
+              <div style={{ marginTop: 'auto', display: 'flex', gap: 10 }}>
+                <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setInterviewingApp(null)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>Create invite</button>
               </div>
             </form>
           </div>
         </>
       )}
 
-      {/* Placement & Margin Modal */}
       {placingApp && (
         <>
-          <div className="overlay" onClick={()=>setPlacingApp(null)} />
-          <div className="drawer" style={{ zIndex: 60, width: 420 }}>
-            <div style={{ padding:'22px 24px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div className="overlay" onClick={() => setPlacingApp(null)} />
+          <div className="drawer" style={{ width: 440 }}>
+            <div style={{ padding: '20px 22px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
               <div>
-                <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:17, color:'var(--emerald)' }}>
-                  Placement & Margin
-                </h2>
-                <p style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>Hire {placingApp.candidate?.name}</p>
+                <h2 style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 17, color: 'var(--emerald)', margin: 0 }}>Place candidate</h2>
+                <p style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 4 }}>{placingApp.candidate?.name}</p>
               </div>
-              <button className="btn-icon" onClick={()=>setPlacingApp(null)}><X size={17} /></button>
+              <button type="button" className="btn-icon" onClick={() => setPlacingApp(null)}><X size={16} /></button>
             </div>
-
-            <form onSubmit={markPlaced} style={{ flex:1, padding:24, display:'flex', flexDirection:'column', gap:20 }}>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.03em' }}>
-                    PAY RATE (/hr)
-                  </label>
-                  <div className="input-search">
-                    <DollarSign size={14} color="var(--text-3)" />
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="50.00"
-                      required
-                      value={payRate}
-                      onChange={e=>setPayRate(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.03em' }}>
-                    BILL RATE (/hr)
-                  </label>
-                  <div className="input-search">
-                    <DollarSign size={14} color="var(--text-3)" />
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="100.00"
-                      required
-                      value={billRate}
-                      onChange={e=>setBillRate(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {payRate && billRate && (
-                <div style={{ padding: 16, background: 'rgba(16, 185, 129, 0.1)', borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.2)', marginTop: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--emerald)', letterSpacing: '0.05em' }}>CALCULATED GROSS MARGIN</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>
-                    ${(parseFloat(billRate) - parseFloat(payRate)).toFixed(2)} <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-3)' }}>/ hr</span>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display:'flex', gap:10, marginTop:'auto' }}>
-                <button type="button" className="btn btn-ghost" style={{ flex:1 }} onClick={()=>setPlacingApp(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ flex:2 }}>Confirm Placement</button>
+            <form onSubmit={markPlaced} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
+              <RateFields
+                billRate={billRate}
+                payRate={payRate}
+                rateUnit={rateUnit}
+                required
+                onChange={({ billRate: b, payRate: p, rateUnit: u }) => {
+                  setBillRate(b);
+                  setPayRate(p);
+                  setRateUnit(u);
+                }}
+              />
+              <div style={{ marginTop: 'auto', display: 'flex', gap: 10 }}>
+                <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setPlacingApp(null)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>Confirm hire</button>
               </div>
             </form>
           </div>
@@ -603,4 +741,55 @@ export default function KanbanView({ isEmbedded = false }) {
       )}
     </div>
   );
+}
+
+const th = {
+  textAlign: 'left',
+  padding: '10px 16px',
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: '0.05em',
+  textTransform: 'uppercase',
+  color: 'var(--text-3)',
+  background: '#fff',
+};
+
+const td = {
+  padding: '12px 16px',
+  verticalAlign: 'middle',
+};
+
+function filterChip(active, color, soft) {
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '6px 12px',
+    borderRadius: 99,
+    border: active ? `1.5px solid ${color}` : '1px solid var(--border)',
+    background: active ? soft : '#fff',
+    color: active ? color : 'var(--text-2)',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  };
+}
+
+function actionBtn(_color) {
+  // One action style — brand blue only (no rainbow chips)
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    border: '1px solid var(--border)',
+    background: '#fff',
+    color: 'var(--primary-dark)',
+    fontSize: 11,
+    fontWeight: 700,
+    padding: '5px 9px',
+    borderRadius: 7,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  };
 }

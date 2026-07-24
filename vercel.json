@@ -1,6 +1,16 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://ats-simplified.onrender.com/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": "https://atspro-aazam-a3f4gqbbhag6erda.canadacentral-01.azurewebsites.net/api/$1"
+    },
+    {
+      "source": "/resumes/(.*)",
+      "destination": "https://atspro-aazam-a3f4gqbbhag6erda.canadacentral-01.azurewebsites.net/resumes/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }

@@ -33,6 +33,15 @@ namespace AtsApi.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedByEmail")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("JobId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -42,6 +51,20 @@ namespace AtsApi.Migrations
                     b.HasIndex("CandidateId");
 
                     b.ToTable("Activities");
+                });
+
+            modelBuilder.Entity("AtsApi.Models.AppSetting", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("AppSettings");
                 });
 
             modelBuilder.Entity("AtsApi.Models.Application", b =>
@@ -73,6 +96,44 @@ namespace AtsApi.Migrations
                     b.HasIndex("JobId");
 
                     b.ToTable("Applications");
+                });
+
+            modelBuilder.Entity("AtsApi.Models.AuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActorEmail")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActorName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetailsJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EntityId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("AtsApi.Models.Candidate", b =>
@@ -144,6 +205,50 @@ namespace AtsApi.Migrations
                     b.ToTable("Candidates");
                 });
 
+            modelBuilder.Entity("AtsApi.Models.CandidateDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CandidateId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DocType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("StoredName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UploadedBy")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId");
+
+                    b.ToTable("CandidateDocuments");
+                });
+
             modelBuilder.Entity("AtsApi.Models.Client", b =>
                 {
                     b.Property<int>("Id")
@@ -212,7 +317,7 @@ namespace AtsApi.Migrations
                             AboutCompany = "Global leader in product manufacturing and tech services.",
                             ContactEmail = "hr@acmecorp.com",
                             ContactsJson = "[{\"Name\":\"John Doe\",\"Email\":\"jdoe@acme.com\",\"Phone\":\"555-0111\",\"Title\":\"HR Manager\"}]",
-                            CreatedAt = new DateTime(2026, 7, 9, 19, 52, 49, 230, DateTimeKind.Utc).AddTicks(3494),
+                            CreatedAt = new DateTime(2026, 7, 24, 0, 19, 10, 794, DateTimeKind.Utc).AddTicks(5682),
                             FederalId = "12-3456789",
                             Industry = "Technology",
                             Location = "San Francisco, CA",
@@ -229,7 +334,7 @@ namespace AtsApi.Migrations
                             AboutCompany = "International industrial equipment supplier.",
                             ContactEmail = "talent@globex.com",
                             ContactsJson = "[]",
-                            CreatedAt = new DateTime(2026, 7, 9, 19, 52, 49, 230, DateTimeKind.Utc).AddTicks(5905),
+                            CreatedAt = new DateTime(2026, 7, 24, 0, 19, 10, 794, DateTimeKind.Utc).AddTicks(7861),
                             FederalId = "98-7654321",
                             Industry = "Manufacturing",
                             Location = "Chicago, IL",
@@ -240,6 +345,135 @@ namespace AtsApi.Migrations
                             Status = "Active",
                             Website = "https://globex.com"
                         });
+                });
+
+            modelBuilder.Entity("AtsApi.Models.EmailOutbox", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ActorEmail")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CandidateId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ToEmail")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ToName")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EmailOutbox");
+                });
+
+            modelBuilder.Entity("AtsApi.Models.EmailTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EmailTemplates");
+                });
+
+            modelBuilder.Entity("AtsApi.Models.Hotlist", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerEmail")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Hotlists");
+                });
+
+            modelBuilder.Entity("AtsApi.Models.HotlistMember", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CandidateId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("HotlistId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId");
+
+                    b.HasIndex("HotlistId", "CandidateId")
+                        .IsUnique();
+
+                    b.ToTable("HotlistMembers");
                 });
 
             modelBuilder.Entity("AtsApi.Models.Interview", b =>
@@ -313,6 +547,10 @@ namespace AtsApi.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("RateUnit")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("RecruitmentManager")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -352,6 +590,7 @@ namespace AtsApi.Migrations
                             Location = "Remote",
                             PayRate = 85.00m,
                             PrimaryRecruiter = "Aazam Qureshi",
+                            RateUnit = "Hourly",
                             RecruitmentManager = "Aazam Qureshi",
                             RequiredSkillsJson = "[\"React\", \"JavaScript\", \"TypeScript\", \"CSS\"]",
                             SalaryRange = "$120k - $150k",
@@ -370,6 +609,7 @@ namespace AtsApi.Migrations
                             Location = "New York, NY",
                             PayRate = 70.00m,
                             PrimaryRecruiter = "Sarah Jenkins",
+                            RateUnit = "Hourly",
                             RecruitmentManager = "Aazam Qureshi",
                             RequiredSkillsJson = "[\"Figma\", \"UI/UX\", \"Prototyping\"]",
                             SalaryRange = "$90k - $120k",
@@ -388,6 +628,7 @@ namespace AtsApi.Migrations
                             Location = "San Francisco, CA",
                             PayRate = 95.00m,
                             PrimaryRecruiter = "Michael Chang",
+                            RateUnit = "Hourly",
                             RecruitmentManager = "Aazam Qureshi",
                             RequiredSkillsJson = "[\"C#\", \".NET Core\", \"SQL\", \"Microservices\"]",
                             SalaryRange = "$130k - $160k",
@@ -439,6 +680,10 @@ namespace AtsApi.Migrations
                     b.Property<decimal>("PayRate")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("RateUnit")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("TEXT");
 
@@ -447,6 +692,37 @@ namespace AtsApi.Migrations
                     b.HasIndex("ApplicationId");
 
                     b.ToTable("Placements");
+                });
+
+            modelBuilder.Entity("AtsApi.Models.SavedSearch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FiltersJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerEmail")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SavedSearches");
                 });
 
             modelBuilder.Entity("AtsApi.Models.Submittal", b =>
@@ -519,7 +795,7 @@ namespace AtsApi.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 7, 9, 19, 52, 49, 229, DateTimeKind.Utc).AddTicks(6587),
+                            CreatedAt = new DateTime(2026, 7, 24, 0, 19, 10, 793, DateTimeKind.Utc).AddTicks(9498),
                             Email = "admin@atspro.com",
                             Name = "Admin User",
                             Password = "password123",
@@ -528,7 +804,7 @@ namespace AtsApi.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 7, 9, 19, 52, 49, 229, DateTimeKind.Utc).AddTicks(7833),
+                            CreatedAt = new DateTime(2026, 7, 24, 0, 19, 10, 794, DateTimeKind.Utc).AddTicks(642),
                             Email = "recruiter@atspro.com",
                             Name = "Recruiter",
                             Password = "password123",
@@ -758,6 +1034,36 @@ namespace AtsApi.Migrations
                     b.Navigation("Job");
                 });
 
+            modelBuilder.Entity("AtsApi.Models.CandidateDocument", b =>
+                {
+                    b.HasOne("AtsApi.Models.Candidate", "Candidate")
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+                });
+
+            modelBuilder.Entity("AtsApi.Models.HotlistMember", b =>
+                {
+                    b.HasOne("AtsApi.Models.Candidate", "Candidate")
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AtsApi.Models.Hotlist", "Hotlist")
+                        .WithMany("Members")
+                        .HasForeignKey("HotlistId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+
+                    b.Navigation("Hotlist");
+                });
+
             modelBuilder.Entity("AtsApi.Models.Interview", b =>
                 {
                     b.HasOne("AtsApi.Models.Application", "Application")
@@ -867,6 +1173,11 @@ namespace AtsApi.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("AtsApi.Models.Hotlist", b =>
+                {
+                    b.Navigation("Members");
                 });
 #pragma warning restore 612, 618
         }

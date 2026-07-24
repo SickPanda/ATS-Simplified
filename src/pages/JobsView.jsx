@@ -6,34 +6,47 @@ import {
   Copy, Edit, Trash, Share2, CheckCircle, BarChart3, Clock,
   ChevronDown, ChevronUp, Landmark, ShieldCheck, UserCheck, ArrowRight
 } from 'lucide-react';
+import { Download } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import RateFields, { RateBadge } from '../components/RateFields';
+import { downloadCsvExport } from '../lib/export';
+import { isMine } from '../lib/ownership';
+import { STAGES as PIPELINE_STAGES } from '../lib/stages';
+
+function ownerLabel(user) {
+  if (!user) return '';
+  const raw = user.name || user.email?.split('@')[0] || '';
+  const parts = raw.split(/[._\s-]+/).filter(Boolean);
+  return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') || raw;
+}
 
 const STATUS_TABS = ['All', 'Active', 'Draft', 'Closed'];
 
-const FUNNEL_STAGES = [
-  { id: 'Applied', color: '#22d3ee' },
-  { id: 'Screened', color: '#a78bfa' },
-  { id: 'Interview', color: '#f59e0b' },
-  { id: 'Offer', color: '#6d5cff' },
-  { id: 'Hired', color: '#10b981' }
-];
+const FUNNEL_STAGES = PIPELINE_STAGES
+  .filter(s => s.id !== 'Rejected')
+  .map(s => ({ id: s.id, color: s.colorHex }));
 
 export default function JobsView() {
+  const { user } = useAuth();
+  const me = ownerLabel(user);
   const [jobs, setJobs] = useState([]);
   const [clients, setClients] = useState([]);
   const [allApps, setAllApps] = useState([]);
   const [submittals, setSubmittals] = useState([]);
   
   const [tab, setTab] = useState('All');
+  const [deskMode, setDeskMode] = useState('all');
   const [viewMode, setViewMode] = useState('list'); // 'grid' | 'list'
   const [showDrawer, setShowDrawer] = useState(false);
   const [expandedJobId, setExpandedJobId] = useState(null); // Collapsible row ID
   
-  // New Job form
-  const [newJob, setNewJob] = useState({ 
+  // New Job form — owners default to logged-in user
+  const emptyJob = () => ({ 
     title:'', department:'', location:'', salaryRange:'', description:'', clientId: '', 
-    requiredSkillsJson: '', jobCode: '', clientJobId: '', billRate: '', payRate: '',
-    recruitmentManager: 'Aazam Qureshi', primaryRecruiter: 'Aazam Qureshi'
+    requiredSkillsJson: '', jobCode: '', clientJobId: '', billRate: '', payRate: '', rateUnit: 'Hourly',
+    recruitmentManager: me, primaryRecruiter: me
   });
+  const [newJob, setNewJob] = useState(emptyJob);
   const [saving, setSaving] = useState(false);
   
   const [actionMenuOpen, setActionMenuOpen] = useState(null);
@@ -72,7 +85,8 @@ export default function JobsView() {
     const payload = { 
       ...newJob,
       billRate: parseFloat(newJob.billRate || '0'),
-      payRate: parseFloat(newJob.payRate || '0')
+      payRate: parseFloat(newJob.payRate || '0'),
+      rateUnit: newJob.rateUnit || 'Hourly',
     };
     if (payload.clientId) payload.clientId = parseInt(payload.clientId);
     if (payload.requiredSkillsJson) {
@@ -86,11 +100,7 @@ export default function JobsView() {
     });
     setSaving(false);
     setShowDrawer(false);
-    setNewJob({ 
-      title:'', department:'', location:'', salaryRange:'', description:'', clientId: '', 
-      requiredSkillsJson: '', jobCode: '', clientJobId: '', billRate: '', payRate: '',
-      recruitmentManager: 'Aazam Qureshi', primaryRecruiter: 'Aazam Qureshi'
-    });
+    setNewJob(emptyJob());
     fetchData();
   };
 
@@ -103,7 +113,11 @@ export default function JobsView() {
     setActionMenuOpen(null);
   };
 
-  const filteredJobs = jobs.filter(j => tab === 'All' || j.status === tab);
+  const filteredJobs = jobs.filter(j => {
+    const statusOk = tab === 'All' || j.status === tab;
+    const deskOk = deskMode !== 'mine' || isMine(j.primaryRecruiter, user);
+    return statusOk && deskOk;
+  });
   
   // KPI Calculations
   const activeJobsCount = jobs.filter(j => j.status === 'Active').length;
@@ -157,30 +171,35 @@ export default function JobsView() {
             Manage client job orders, evaluate submissions, and track billing margins
           </p>
         </div>
-        <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: 13 }} onClick={()=>setShowDrawer(true)}>
-          <Plus size={15} /> Post Requirement
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-ghost" title="Export CSV" onClick={() => downloadCsvExport('jobs').catch(e => alert(e.message))}>
+            <Download size={14} /> Export
+          </button>
+          <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: 13 }} onClick={()=>setShowDrawer(true)}>
+            <Plus size={15} /> Post Requirement
+          </button>
+        </div>
       </div>
 
       {/* KPI Row */}
       <div className="anim-fade-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, animationDelay: '0.05s' }}>
-        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(109,92,255,0.1) 0%, rgba(109,92,255,0.02) 100%)', border: '1px solid rgba(109,92,255,0.2)' }}>
+        <div className="kpi-card kpi-primary">
           <div className="kpi-icon" style={{ background: 'var(--primary-glow)' }}><Briefcase size={18} color="var(--primary-light)" /></div>
           <div className="kpi-val">{activeJobsCount}</div>
           <div className="kpi-label">Active Requirements</div>
         </div>
-        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(34,211,238,0.1) 0%, rgba(34,211,238,0.02) 100%)', border: '1px solid rgba(34,211,238,0.2)' }}>
-          <div className="kpi-icon" style={{ background: 'rgba(34,211,238,0.15)' }}><Users size={18} color="var(--cyan)" /></div>
+        <div className="kpi-card kpi-muted">
+          <div className="kpi-icon" style={{ background: 'var(--surface-3)' }}><Users size={18} color="var(--text-2)" /></div>
           <div className="kpi-val">{activePipelineCount}</div>
           <div className="kpi-label">Candidates in Pipeline</div>
         </div>
-        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.02) 100%)', border: '1px solid rgba(245,158,11,0.2)' }}>
-          <div className="kpi-icon" style={{ background: 'rgba(245,158,11,0.15)' }}><Clock size={18} color="var(--amber)" /></div>
+        <div className="kpi-card kpi-warning">
+          <div className="kpi-icon" style={{ background: 'var(--warning-soft)' }}><Clock size={18} color="var(--warning)" /></div>
           <div className="kpi-val">14 <span style={{ fontSize: 13, color: 'var(--text-3)' }}>days</span></div>
           <div className="kpi-label">Average Time-to-Fill</div>
         </div>
-        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.02) 100%)', border: '1px solid rgba(16,185,129,0.2)' }}>
-          <div className="kpi-icon" style={{ background: 'rgba(16,185,129,0.15)' }}><CheckCircle size={18} color="var(--emerald)" /></div>
+        <div className="kpi-card kpi-success">
+          <div className="kpi-icon" style={{ background: 'var(--success-soft)' }}><CheckCircle size={18} color="var(--success)" /></div>
           <div className="kpi-val">{totalHired}</div>
           <div className="kpi-label">Client Placements</div>
         </div>
@@ -189,6 +208,10 @@ export default function JobsView() {
       {/* Toolbar */}
       <div className="anim-fade-up" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', animationDelay:'0.1s' }}>
         <div className="tab-bar">
+          <div className="tab-bar" style={{ marginRight: 8 }}>
+            <button type="button" className={`tab${deskMode==='all'?' active':''}`} onClick={() => setDeskMode('all')}>All desk</button>
+            <button type="button" className={`tab${deskMode==='mine'?' active':''}`} onClick={() => setDeskMode('mine')}>My desk</button>
+          </div>
           {STATUS_TABS.map(t => (
             <button key={t} className={`tab${tab===t?' active':''}`} onClick={()=>setTab(t)}>
               {t}
@@ -272,8 +295,7 @@ export default function JobsView() {
                     </div>
 
                     <div style={{ marginTop:14, fontSize:12, color:'var(--text-2)' }}>
-                      Bill Rate: <strong>${job.billRate}/hr</strong> · Pay Rate: <strong>${job.payRate}/hr</strong>
-                      <span style={{ color:'var(--emerald)', fontWeight:700, marginLeft:6 }}>(${job.billRate - job.payRate}/hr Margin)</span>
+                      <RateBadge billRate={job.billRate} payRate={job.payRate} rateUnit={job.rateUnit} />
                     </div>
 
                     <PipelineFunnel jobId={job.id} />
@@ -338,10 +360,7 @@ export default function JobsView() {
                         </td>
                         <td style={{ padding: '12px 20px', color: 'var(--text-3)' }}>{job.location}</td>
                         <td style={{ padding: '12px 20px' }}>
-                          <div style={{ color: 'var(--text-2)' }}>Bill: <strong>${job.billRate}/hr</strong> · Pay: <strong>${job.payRate}/hr</strong></div>
-                          <div style={{ fontSize: 11, color: 'var(--emerald)', fontWeight: 700, marginTop: 2 }}>
-                            ${job.billRate - job.payRate}/hr Margin
-                          </div>
+                          <RateBadge billRate={job.billRate} payRate={job.payRate} rateUnit={job.rateUnit} />
                         </td>
                         <td style={{ padding: '12px 20px' }}>
                           <div style={{ fontSize:12, color:'var(--text-2)' }}>Lead: {job.recruitmentManager}</div>
@@ -379,7 +398,7 @@ export default function JobsView() {
                                         <div style={{ fontSize:13, fontWeight:700, color:'var(--text-1)' }}>{app.candidateName || `Candidate #${app.candidateId}`}</div>
                                         <div style={{ fontSize:11.5, color:'var(--text-3)', marginTop:2 }}>Score Match: <strong style={{ color:'var(--primary-light)' }}>{app.matchScore}%</strong></div>
                                       </div>
-                                      <span style={{ fontSize:10.5, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(109,92,255,0.1)', color:'var(--primary-light)' }}>
+                                      <span style={{ fontSize:10.5, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'var(--primary-glow)', color:'var(--primary)' }}>
                                         {app.stage}
                                       </span>
                                     </div>
@@ -455,21 +474,18 @@ export default function JobsView() {
                 </div>
               </div>
 
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-                <div>
-                  <label className="label">BILL RATE ($/HR) *</label>
-                  <input type="number" className="input" placeholder="120" required value={newJob.billRate} onChange={e=>setNewJob({...newJob, billRate:e.target.value})} />
-                </div>
-                <div>
-                  <label className="label">PAY RATE ($/HR) *</label>
-                  <input type="number" className="input" placeholder="85" required value={newJob.payRate} onChange={e=>setNewJob({...newJob, payRate:e.target.value})} />
-                </div>
-              </div>
+              <RateFields
+                billRate={newJob.billRate}
+                payRate={newJob.payRate}
+                rateUnit={newJob.rateUnit || 'Hourly'}
+                required
+                onChange={({ billRate, payRate, rateUnit }) => setNewJob({ ...newJob, billRate, payRate, rateUnit })}
+              />
 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
                 <div>
-                  <label className="label">SALARY ANNUM RANGE</label>
-                  <input className="input" placeholder="$120k – $150k" value={newJob.salaryRange} onChange={e=>setNewJob({...newJob, salaryRange:e.target.value})} />
+                  <label className="label">DISPLAY RANGE (OPTIONAL)</label>
+                  <input className="input" placeholder="e.g. $120–$150/hr or $180k–$200k" value={newJob.salaryRange} onChange={e=>setNewJob({...newJob, salaryRange:e.target.value})} />
                 </div>
                 <div>
                   <label className="label">CLIENT ACCOUNT *</label>

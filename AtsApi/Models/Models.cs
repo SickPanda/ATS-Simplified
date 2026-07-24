@@ -9,10 +9,14 @@ public class Job
     public string Department { get; set; } = string.Empty;
     public string Status { get; set; } = "Active"; // Active, Closed, Draft
     public string Location { get; set; } = string.Empty;
-    public decimal BillRate { get; set; } // hourly bill rate
-    public decimal PayRate { get; set; } // hourly pay rate
-    public string RecruitmentManager { get; set; } = "Aazam Qureshi";
-    public string PrimaryRecruiter { get; set; } = "Aazam Qureshi";
+    /// <summary>Client bill rate (stored in RateUnit).</summary>
+    public decimal BillRate { get; set; }
+    /// <summary>Candidate/vendor pay rate (stored in RateUnit).</summary>
+    public decimal PayRate { get; set; }
+    /// <summary>Hourly or Annual — both bill and pay share this unit (Ceipal-style).</summary>
+    public string RateUnit { get; set; } = "Hourly";
+    public string RecruitmentManager { get; set; } = string.Empty;
+    public string PrimaryRecruiter { get; set; } = string.Empty;
     public string SalaryRange { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string RequiredSkillsJson { get; set; } = "[]";
@@ -33,7 +37,7 @@ public class Candidate
     public string State { get; set; } = string.Empty;
     public string Source { get; set; } = "Sourced"; // LinkedIn, CareerBuilder, Parser, Vendor
     public string Status { get; set; } = "Active"; // Active, Hired, Blacklisted
-    public string Ownership { get; set; } = "Aazam Qureshi"; // Assigned Recruiter
+    public string Ownership { get; set; } = string.Empty; // Assigned Recruiter
     public string WorkAuthorization { get; set; } = "US Citizen"; // W2, C2C, H1B, Green Card, etc.
     public string SkillsJson { get; set; } = "[]";
     public string? ResumeFilePath { get; set; }

@@ -23,10 +23,42 @@ public class AtsDbContext : IdentityDbContext<IdentityUser>
     public DbSet<Interview> Interviews { get; set; } = null!;
     public DbSet<Placement> Placements { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
+    public DbSet<AuditLog> AuditLogs { get; set; } = null!;
+    public DbSet<AppSetting> AppSettings { get; set; } = null!;
+    public DbSet<EmailTemplate> EmailTemplates { get; set; } = null!;
+    public DbSet<EmailOutbox> EmailOutbox { get; set; } = null!;
+    public DbSet<Hotlist> Hotlists { get; set; } = null!;
+    public DbSet<HotlistMember> HotlistMembers { get; set; } = null!;
+    public DbSet<SavedSearch> SavedSearches { get; set; } = null!;
+    public DbSet<CandidateDocument> CandidateDocuments { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<AppSetting>().HasKey(s => s.Key);
+
+        modelBuilder.Entity<HotlistMember>()
+            .HasIndex(m => new { m.HotlistId, m.CandidateId })
+            .IsUnique();
+
+        modelBuilder.Entity<HotlistMember>()
+            .HasOne(m => m.Hotlist)
+            .WithMany(h => h.Members)
+            .HasForeignKey(m => m.HotlistId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<HotlistMember>()
+            .HasOne(m => m.Candidate)
+            .WithMany()
+            .HasForeignKey(m => m.CandidateId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CandidateDocument>()
+            .HasOne(d => d.Candidate)
+            .WithMany()
+            .HasForeignKey(d => d.CandidateId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Seed Initial Data
         modelBuilder.Entity<User>().HasData(

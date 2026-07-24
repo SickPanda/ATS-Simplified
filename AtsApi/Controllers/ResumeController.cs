@@ -1,12 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-using System.Text;
-using System.Text.RegularExpressions;
 using AtsApi.Models;
-using DocumentFormat.OpenXml.Packaging;
-using PdfiumViewer;
-using System.Drawing;
-using System.Drawing.Imaging;
+using AtsApi.Services;
 
 namespace AtsApi.Controllers;
 
@@ -14,70 +10,181 @@ namespace AtsApi.Controllers;
 [Route("api/ats/[controller]")]
 public class ResumeController : ControllerBase
 {
-    private readonly HttpClient _httpClient;
     private readonly AtsDbContext _context;
-    
-    private readonly IConfiguration _configuration;
+    private readonly IWebHostEnvironment _env;
 
-    public ResumeController(AtsDbContext context, IConfiguration configuration)
+    public ResumeController(AtsDbContext context, IWebHostEnvironment env)
     {
-        _httpClient = new HttpClient();
         _context = context;
-        _configuration = configuration;
+        _env = env;
     }
 
+    /// <summary>
+    /// ATS Pro Intelligence — fully in-app resume parse.
+    /// No external AI APIs (Gemini/Groq/OpenAI). Data never leaves your server.
+    /// </summary>
     [HttpPost("parse")]
     public async Task<IActionResult> ParseResume(IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest("No file uploaded.");
 
-        var ext = Path.GetExtension(file.FileName).ToLower();
-        if (ext != ".pdf" && ext != ".docx")
-            return BadRequest("Only .pdf and .docx files are supported.");
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext is not (".pdf" or ".docx" or ".txt"))
+            return BadRequest("Only .pdf, .docx, and .txt files are supported.");
 
         try
         {
-            var customApiKey = Request.Headers["X-Gemini-Key"].ToString();
-            Candidate? parsedCandidate = null;
-
-            if (ext == ".docx")
+            string text;
+            try
             {
-                string text = ExtractTextFromDocx(file);
-                parsedCandidate = await CallGeminiLlmAsync(text: text, customApiKey: customApiKey);
-                if (parsedCandidate == null)
-                    return StatusCode(502, "Gemini API failed to parse the DOCX. Check that your API key is valid.");
+                text = await ResumeTextExtractor.ExtractAsync(file);
             }
-            else if (ext == ".pdf")
+            catch (Exception ex)
             {
-                var base64Images = ConvertPdfToImages(file);
-                parsedCandidate = await CallGeminiLlmAsync(images: base64Images, customApiKey: customApiKey);
+                return BadRequest($"Could not read document text: {ex.Message}");
             }
 
-            if (parsedCandidate == null)
+            if (string.IsNullOrWhiteSpace(text) || text.Trim().Length < 20)
             {
-                return StatusCode(500, "Failed to parse the document.");
+                return BadRequest(
+                    "ATS Pro Intelligence could not extract enough text. " +
+                    "Scanned/image-only PDFs are not supported yet — use a text PDF, DOCX, or Quick Parse paste.");
             }
 
-            // Save PDF to wwwroot/resumes
-            var resumesFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "resumes");
-            if (!Directory.Exists(resumesFolder))
-                Directory.CreateDirectory(resumesFolder);
-                
-            var fileName = Guid.NewGuid().ToString() + ext;
-            var filePath = Path.Combine(resumesFolder, fileName);
-            
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            var result = LocalResumeParser.ParseDetailed(text, "ATS Pro Intelligence");
+            var parsed = result.Candidate;
+
+            // Save original file (DATA_DIR-aware)
+            var (storedName, size) = await DocumentStorage.SaveAsync(_env, file);
+            parsed.ResumeFilePath = "/resumes/" + storedName;
+
+            // Activity: intelligence report (summary, confidence, work history)
+            string BuildIntelNote()
             {
-                await file.CopyToAsync(fileStream);
+                var parts = new List<string>
+                {
+                    $"ATS Pro Intelligence · confidence {result.Confidence}%",
+                    $"Engine: in-app (no external AI)"
+                };
+                if (!string.IsNullOrWhiteSpace(result.Summary))
+                    parts.Add("Summary: " + result.Summary);
+                if (!string.IsNullOrWhiteSpace(result.LinkedIn))
+                    parts.Add("LinkedIn: " + result.LinkedIn);
+                if (!string.IsNullOrWhiteSpace(result.GitHub))
+                    parts.Add("GitHub: " + result.GitHub);
+                if (result.WorkHistory.Count > 0)
+                {
+                    parts.Add("Work history:");
+                    foreach (var j in result.WorkHistory.Take(5))
+                        parts.Add($"  • {j.Title}" +
+                                  (string.IsNullOrEmpty(j.Company) ? "" : $" @ {j.Company}") +
+                                  (string.IsNullOrEmpty(j.Dates) ? "" : $" ({j.Dates})"));
+                }
+                return string.Join("\n", parts);
             }
 
-            parsedCandidate.ResumeFilePath = "/resumes/" + fileName;
+            // Duplicate merge by email
+            if (!string.IsNullOrWhiteSpace(parsed.Email) && parsed.Email != "Unknown")
+            {
+                var existing = await _context.Candidates
+                    .FirstOrDefaultAsync(c => c.Email != null && c.Email.ToLower() == parsed.Email.ToLower());
 
-            // Save to database
-            _context.Candidates.Add(parsedCandidate);
+                if (existing != null)
+                {
+                    var existingSkills = MatchEngine.ParseSkills(existing.SkillsJson);
+                    var newSkills = MatchEngine.ParseSkills(parsed.SkillsJson);
+                    foreach (var s in newSkills)
+                    {
+                        if (!existingSkills.Any(e => string.Equals(e, s, StringComparison.OrdinalIgnoreCase)))
+                            existingSkills.Add(s);
+                    }
+                    existing.SkillsJson = JsonSerializer.Serialize(existingSkills);
+                    existing.ResumeFilePath = parsed.ResumeFilePath;
+                    if (string.IsNullOrEmpty(existing.Phone) || existing.Phone == "Unknown")
+                        existing.Phone = parsed.Phone;
+                    if (string.IsNullOrEmpty(existing.Role) || existing.Role is "Unknown" or "Professional")
+                        existing.Role = parsed.Role;
+                    if (string.IsNullOrEmpty(existing.Experience) || existing.Experience.Contains("Not specified"))
+                        existing.Experience = parsed.Experience;
+                    if (string.IsNullOrEmpty(existing.Education) || existing.Education.Contains("Not specified"))
+                        existing.Education = parsed.Education;
+
+                    _context.CandidateDocuments.Add(new CandidateDocument
+                    {
+                        CandidateId = existing.Id,
+                        FileName = file.FileName,
+                        StoredName = storedName,
+                        ContentType = file.ContentType ?? "application/octet-stream",
+                        SizeBytes = size,
+                        DocType = "Resume",
+                        UploadedBy = "ATS Pro Intelligence",
+                        UploadedAt = DateTime.UtcNow,
+                        Notes = "Parsed upload (duplicate merge)"
+                    });
+
+                    _context.Activities.Add(new Activity
+                    {
+                        CandidateId = existing.Id,
+                        Type = "System",
+                        Content = BuildIntelNote() + "\n(merged into existing profile)",
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = "System"
+                    });
+
+                    await _context.SaveChangesAsync();
+                    return Ok(new
+                    {
+                        message = "Duplicate detected — existing candidate updated by ATS Pro Intelligence.",
+                        candidate = existing,
+                        isDuplicate = true,
+                        engine = "ats-pro-intelligence",
+                        confidence = result.Confidence,
+                        summary = result.Summary,
+                        linkedIn = result.LinkedIn,
+                        workHistory = result.WorkHistory,
+                        textChars = text.Length
+                    });
+                }
+            }
+
+            _context.Candidates.Add(parsed);
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Resume parsed and saved successfully.", candidate = parsedCandidate });
+
+            _context.CandidateDocuments.Add(new CandidateDocument
+            {
+                CandidateId = parsed.Id,
+                FileName = file.FileName,
+                StoredName = storedName,
+                ContentType = file.ContentType ?? "application/octet-stream",
+                SizeBytes = size,
+                DocType = "Resume",
+                UploadedBy = "ATS Pro Intelligence",
+                UploadedAt = DateTime.UtcNow
+            });
+
+            _context.Activities.Add(new Activity
+            {
+                CandidateId = parsed.Id,
+                Type = "System",
+                Content = BuildIntelNote(),
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = "System"
+            });
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = $"Resume parsed by ATS Pro Intelligence ({result.Confidence}% confidence) — runs in your app, no external AI.",
+                candidate = parsed,
+                isDuplicate = false,
+                engine = "ats-pro-intelligence",
+                confidence = result.Confidence,
+                summary = result.Summary,
+                linkedIn = result.LinkedIn,
+                workHistory = result.WorkHistory,
+                textChars = text.Length
+            });
         }
         catch (Exception ex)
         {
@@ -85,173 +192,25 @@ public class ResumeController : ControllerBase
         }
     }
 
-    private string ExtractTextFromDocx(IFormFile file)
+    [HttpPost("parse-preview")]
+    public async Task<IActionResult> ParsePreview(IFormFile file)
     {
-        using var stream = file.OpenReadStream();
-        using var wordDoc = WordprocessingDocument.Open(stream, false);
-        var body = wordDoc.MainDocumentPart?.Document.Body;
-        return body?.InnerText ?? "";
-    }
+        if (file == null || file.Length == 0) return BadRequest("No file.");
+        var text = await ResumeTextExtractor.ExtractAsync(file);
+        if (string.IsNullOrWhiteSpace(text) || text.Length < 20)
+            return BadRequest("Not enough text extracted.");
 
-    private List<string> ConvertPdfToImages(IFormFile file)
-    {
-        var base64Images = new List<string>();
-        using var stream = file.OpenReadStream();
-        using var pdfDocument = PdfDocument.Load(stream);
-        for (int i = 0; i < pdfDocument.PageCount; i++)
+        var result = LocalResumeParser.ParseDetailed(text);
+        return Ok(new
         {
-            // Use 200 DPI for good OCR quality while keeping token size reasonable
-            using var image = pdfDocument.Render(i, 200, 200, PdfRenderFlags.CorrectFromDpi);
-            using var ms = new MemoryStream();
-            image.Save(ms, ImageFormat.Png);
-            base64Images.Add(Convert.ToBase64String(ms.ToArray()));
-        }
-        return base64Images;
-    }
-
-    private Candidate ParseWithRegex(string text)
-    {
-        var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-        string name = "Unknown";
-        if (lines.Length > 0)
-        {
-            name = lines[0].Trim();
-        }
-
-        string email = "Unknown";
-        var emailMatch = Regex.Match(text, @"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}");
-        if (emailMatch.Success) email = emailMatch.Value;
-
-        string role = "Developer";
-        var roleMatch = Regex.Match(text, @"(?i)(software engineer|frontend engineer|backend developer|product designer|data scientist|manager|developer)");
-        if (roleMatch.Success) role = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(roleMatch.Value.ToLower());
-
-        string experience = "Entry Level";
-        var expMatch = Regex.Match(text, @"(?i)(\d+)\+?\s+years");
-        if (expMatch.Success) experience = expMatch.Value;
-
-        return new Candidate
-        {
-            Name = name,
-            Role = role,
-            Experience = experience,
-            Email = email,
-            Phone = "Unknown",
-            Education = "Unknown",
-            SkillsJson = "[]"
-        };
-    }
-
-    private async Task<Candidate?> CallGeminiLlmAsync(string? text = null, List<string>? images = null, string customApiKey = "")
-    {
-        var apiKey = !string.IsNullOrEmpty(customApiKey) ? customApiKey : _configuration["GeminiApiKey"];
-        if (string.IsNullOrEmpty(apiKey)) 
-        {
-            throw new Exception("Gemini API Key is missing. Please provide it in Settings.");
-        }
-
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
-
-        var parts = new List<object>();
-        
-        string prompt = @"Extract the following information from the resume. 
-Respond ONLY with a valid JSON object matching this schema. Do NOT use markdown code blocks, just raw JSON:
-{
-  ""Name"": """",
-  ""Role"": """",
-  ""Experience"": """",
-  ""Email"": """",
-  ""Phone"": """",
-  ""Education"": """",
-  ""City"": """",
-  ""State"": """",
-  ""WorkAuthorization"": """",
-  ""Skills"": [""skill1"", ""skill2""]
-}";
-
-        parts.Add(new { text = prompt });
-
-        if (!string.IsNullOrEmpty(text))
-        {
-            parts.Add(new { text = "\nResume Text:\n" + text });
-        }
-        
-        if (images != null)
-        {
-            foreach (var imgBase64 in images)
-            {
-                parts.Add(new {
-                    inline_data = new {
-                        mime_type = "image/png",
-                        data = imgBase64
-                    }
-                });
-            }
-        }
-
-        var requestBody = new
-        {
-            contents = new[] { new { parts = parts } },
-            generationConfig = new { responseMimeType = "application/json" }
-        };
-
-        var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
-
-        try
-        {
-            var response = await _httpClient.PostAsync(url, content);
-            var responseString = await response.Content.ReadAsStringAsync();
-            
-            if (response.IsSuccessStatusCode)
-            {
-                using var jsonDoc = JsonDocument.Parse(responseString);
-                var candidatesList = jsonDoc.RootElement.GetProperty("candidates");
-                if (candidatesList.GetArrayLength() > 0)
-                {
-                    var generatedText = candidatesList[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
-                    
-                    if (!string.IsNullOrEmpty(generatedText))
-                    {
-                        // Clean up markdown if any
-                        generatedText = generatedText.Trim();
-                        if (generatedText.StartsWith("```json"))
-                        {
-                            generatedText = generatedText.Substring(7);
-                            if (generatedText.EndsWith("```")) generatedText = generatedText.Substring(0, generatedText.Length - 3);
-                        }
-                        
-                        using var data = JsonDocument.Parse(generatedText.Trim());
-                        return new Candidate
-                        {
-                            Name = data.RootElement.TryGetProperty("Name", out var n) ? n.GetString() ?? "Unknown" : "Unknown",
-                            Role = data.RootElement.TryGetProperty("Role", out var r) ? r.GetString() ?? "Unknown" : "Unknown",
-                            Experience = data.RootElement.TryGetProperty("Experience", out var ex) ? ex.GetString() ?? "Unknown" : "Unknown",
-                            Email = data.RootElement.TryGetProperty("Email", out var em) ? em.GetString() ?? "Unknown" : "Unknown",
-                            Phone = data.RootElement.TryGetProperty("Phone", out var p) ? p.GetString() ?? "Unknown" : "Unknown",
-                            Education = data.RootElement.TryGetProperty("Education", out var ed) ? ed.GetString() ?? "Unknown" : "Unknown",
-                            City = data.RootElement.TryGetProperty("City", out var ct) ? ct.GetString() ?? "Unknown" : "Unknown",
-                            State = data.RootElement.TryGetProperty("State", out var st) ? st.GetString() ?? "Unknown" : "Unknown",
-                            WorkAuthorization = data.RootElement.TryGetProperty("WorkAuthorization", out var wa) ? wa.GetString() ?? "US Citizen" : "US Citizen",
-                            Source = "Resume Parser",
-                            Status = "Active",
-                            Ownership = "Aazam Qureshi",
-                            SkillsJson = data.RootElement.TryGetProperty("Skills", out var skills) ? skills.GetRawText() : "[]"
-                        };
-                    }
-                }
-            }
-            else
-            {
-                var errorMsg = "Gemini API Error: " + response.StatusCode + " - " + responseString;
-                Console.WriteLine(errorMsg);
-                throw new Exception(errorMsg);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Exception calling Gemini: " + ex.Message);
-            throw; // Re-throw to be caught by the outer block and returned to UI
-        }
-        return null;
+            engine = "ats-pro-intelligence",
+            confidence = result.Confidence,
+            summary = result.Summary,
+            linkedIn = result.LinkedIn,
+            github = result.GitHub,
+            workHistory = result.WorkHistory,
+            candidate = result.Candidate,
+            textChars = text.Length
+        });
     }
 }

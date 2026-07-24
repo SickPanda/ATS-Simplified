@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ArrowRightLeft, CheckCircle, Users, Landmark, Clock, Phone, Mail, DollarSign, Calendar, Search, MapPin, TrendingUp } from 'lucide-react';
+import { ArrowRightLeft, CheckCircle, Users, Landmark, Clock, Phone, Mail, DollarSign, Calendar, Search, MapPin, TrendingUp, Download } from 'lucide-react';
+import { RateBadge } from '../components/RateFields';
+import { marginPercent, unitSuffix, money, isAnnual } from '../lib/rates';
+import { downloadCsvExport } from '../lib/export';
 
 export default function PlacementsView() {
   const [activeTab, setActiveTab] = useState('submissions'); // 'submissions' | 'placements'
@@ -26,10 +29,23 @@ export default function PlacementsView() {
     fetchPlacements();
   }, []);
 
-  // Totals calculations
-  const totalMargin = placements.reduce((acc, p) => acc + (p.grossMargin ?? (p.billRate - p.payRate)), 0);
-  const avgBill = placements.length ? placements.reduce((acc, p) => acc + p.billRate, 0) / placements.length : 0;
-  const avgPay = placements.length ? placements.reduce((acc, p) => acc + p.payRate, 0) / placements.length : 0;
+  // Normalize to hourly for KPIs (2080 hrs/yr) so mixed units still compare
+  const toHr = (amount, unit) => {
+    const n = Number(amount) || 0;
+    return String(unit || '').toLowerCase() === 'annual' ? n / 2080 : n;
+  };
+  const totalMargin = placements.reduce((acc, p) => {
+    const bill = toHr(p.billRate, p.rateUnit);
+    const pay = toHr(p.payRate, p.rateUnit);
+    return acc + (bill - pay);
+  }, 0);
+  const avgBill = placements.length
+    ? placements.reduce((acc, p) => acc + toHr(p.billRate, p.rateUnit), 0) / placements.length
+    : 0;
+  const avgPay = placements.length
+    ? placements.reduce((acc, p) => acc + toHr(p.payRate, p.rateUnit), 0) / placements.length
+    : 0;
+  const avgMarginPct = avgBill > 0 ? ((avgBill - avgPay) / avgBill) * 100 : 0;
 
   const filteredSubmissions = submissions.filter(s =>
     !search ||
@@ -60,45 +76,54 @@ export default function PlacementsView() {
           </p>
         </div>
 
-        {/* Tab switcher */}
-        <div className="tab-bar">
-          <button 
-            className={`tab${activeTab === 'submissions' ? ' active' : ''}`} 
-            onClick={() => { setActiveTab('submissions'); setSearch(''); }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: 12.5 }}
+            onClick={() => downloadCsvExport(activeTab === 'placements' ? 'placements' : 'pipeline').catch(e => alert(e.message))}
           >
-            Submissions ({submissions.length})
+            <Download size={14} /> Export
           </button>
-          <button 
-            className={`tab${activeTab === 'placements' ? ' active' : ''}`} 
-            onClick={() => { setActiveTab('placements'); setSearch(''); }}
-          >
-            Placements ({placements.length})
-          </button>
+          {/* Tab switcher */}
+          <div className="tab-bar">
+            <button 
+              className={`tab${activeTab === 'submissions' ? ' active' : ''}`} 
+              onClick={() => { setActiveTab('submissions'); setSearch(''); }}
+            >
+              Submissions ({submissions.length})
+            </button>
+            <button 
+              className={`tab${activeTab === 'placements' ? ' active' : ''}`} 
+              onClick={() => { setActiveTab('placements'); setSearch(''); }}
+            >
+              Placements ({placements.length})
+            </button>
+          </div>
         </div>
       </div>
 
       {activeTab === 'placements' && placements.length > 0 && (
         /* Financial Placement KPIs */
         <div className="anim-fade-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, animationDelay: '0.05s' }}>
-          <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.02) 100%)', border: '1px solid rgba(16,185,129,0.2)' }}>
-            <div className="kpi-icon" style={{ background: 'rgba(16,185,129,0.15)' }}><CheckCircle size={18} color="var(--emerald)" /></div>
+          <div className="kpi-card kpi-success">
+            <div className="kpi-icon" style={{ background: 'var(--success-soft)' }}><CheckCircle size={18} color="var(--success)" /></div>
             <div className="kpi-val">{placements.length}</div>
             <div className="kpi-label">Hired Starts</div>
           </div>
-          <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(34,211,238,0.1) 0%, rgba(34,211,238,0.02) 100%)', border: '1px solid rgba(34,211,238,0.2)' }}>
-            <div className="kpi-icon" style={{ background: 'rgba(34,211,238,0.15)' }}><DollarSign size={18} color="var(--cyan)" /></div>
+          <div className="kpi-card kpi-primary">
+            <div className="kpi-icon"><DollarSign size={18} color="var(--primary)" /></div>
             <div className="kpi-val">${avgBill.toFixed(2)}<span style={{ fontSize:13, color:'var(--text-3)' }}>/hr</span></div>
             <div className="kpi-label">Average Bill Rate</div>
           </div>
-          <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.02) 100%)', border: '1px solid rgba(245,158,11,0.2)' }}>
-            <div className="kpi-icon" style={{ background: 'rgba(245,158,11,0.15)' }}><DollarSign size={18} color="var(--amber)" /></div>
+          <div className="kpi-card kpi-muted">
+            <div className="kpi-icon" style={{ background: 'var(--surface-3)' }}><DollarSign size={18} color="var(--text-2)" /></div>
             <div className="kpi-val">${avgPay.toFixed(2)}<span style={{ fontSize:13, color:'var(--text-3)' }}>/hr</span></div>
             <div className="kpi-label">Average Pay Rate</div>
           </div>
-          <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(109,92,255,0.1) 0%, rgba(109,92,255,0.02) 100%)', border: '1px solid rgba(109,92,255,0.2)' }}>
-            <div className="kpi-icon" style={{ background: 'var(--primary-glow)' }}><TrendingUp size={18} color="var(--primary-light)" /></div>
+          <div className="kpi-card kpi-primary">
+            <div className="kpi-icon"><TrendingUp size={18} color="var(--primary)" /></div>
             <div className="kpi-val">${totalMargin.toFixed(2)}<span style={{ fontSize:13, color:'var(--text-3)' }}>/hr</span></div>
-            <div className="kpi-label">Total Gross Margin</div>
+            <div className="kpi-label">Total Gross Margin · avg {avgMarginPct.toFixed(1)}%</div>
           </div>
         </div>
       )}
@@ -162,7 +187,7 @@ export default function PlacementsView() {
                       <td style={{ padding: '12px 20px' }}>
                         <span style={{
                           padding: '3px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 700,
-                          background: sub.status === 'Submitted to Client' ? 'rgba(34,211,238,0.1)' : 'rgba(255,255,255,0.05)',
+                          background: sub.status === 'Submitted to Client' ? 'var(--primary-glow)' : 'var(--surface-2)',
                           color: sub.status === 'Submitted to Client' ? 'var(--cyan)' : 'var(--text-3)',
                         }}>
                           {sub.status}
@@ -198,7 +223,9 @@ export default function PlacementsView() {
                 </thead>
                 <tbody>
                   {filteredPlacements.map((plc, idx) => {
-                    const margin = plc.grossMargin ?? (plc.billRate - plc.payRate);
+                    const margin = plc.grossMargin ?? ((Number(plc.billRate) || 0) - (Number(plc.payRate) || 0));
+                    const mp = plc.marginPercent ?? marginPercent(plc.billRate, plc.payRate);
+                    const s = unitSuffix(plc.rateUnit);
                     return (
                       <tr key={plc.id} className="trow" style={{ borderBottom: idx < filteredPlacements.length - 1 ? '1px solid var(--border)' : 'none' }}>
                         <td style={{ padding: '12px 20px', fontWeight: 700, color: 'var(--text-3)' }}>
@@ -214,15 +241,18 @@ export default function PlacementsView() {
                           <div style={{ fontWeight: 500, color: 'var(--text-2)' }}>{plc.jobTitle}</div>
                           <div style={{ fontSize:11, color:'var(--text-4)', marginTop:2 }}>Req Code: {plc.jobCode}</div>
                         </td>
-                        <td style={{ padding: '12px 20px', color: 'var(--text-2)' }}>
-                          Bill: <strong>${plc.billRate}/hr</strong> · Pay: <strong>${plc.payRate}/hr</strong>
+                        <td style={{ padding: '12px 20px' }}>
+                          <RateBadge billRate={plc.billRate} payRate={plc.payRate} rateUnit={plc.rateUnit} />
+                          <div style={{ fontSize: 10, color: 'var(--text-4)', marginTop: 2 }}>
+                            {isAnnual(plc.rateUnit) ? 'Annual' : 'Hourly'} rates
+                          </div>
                         </td>
                         <td style={{ padding: '12px 20px' }}>
                           <span style={{
                             padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700,
-                            background: 'rgba(16,185,129,0.1)', color: 'var(--emerald)'
+                            background: 'var(--success-soft)', color: 'var(--success)'
                           }}>
-                            +${margin.toFixed(2)}/hr
+                            +${money(margin)}{s} · {mp}%
                           </span>
                         </td>
                         <td style={{ padding: '12px 20px', color: 'var(--text-3)' }}>

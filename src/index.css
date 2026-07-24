@@ -1,37 +1,63 @@
 :root {
-  /* Creamy white backgrounds */
-  --bg: #faf8f5;
+  /*
+   * Design system — restrained.
+   * Brand = one blue. Stages = blue ladder (1→4) + green hire + gray out.
+   * Semantic only: success / warning / danger. No rainbow accents.
+   */
+
+  --bg: #f6f8fc;
   --surface: #ffffff;
-  --surface-2: #f5f2ee;
-  --surface-3: #ede9e3;
-  --border: rgba(0, 0, 0, 0.07);
-  --border-hover: rgba(0, 0, 0, 0.14);
-  --border-active: rgba(220, 50, 80, 0.3);
+  --surface-2: #f0f4fa;
+  --surface-3: #e4eaf3;
+  --border: rgba(15, 23, 42, 0.08);
+  --border-hover: rgba(15, 23, 42, 0.14);
+  --border-active: rgba(37, 99, 235, 0.35);
 
-  /* Strawberry primary */
-  --primary: #e8304a;
-  --primary-dark: #c2243a;
-  --primary-light: #ff5572;
-  --primary-glow: rgba(232, 48, 74, 0.10);
-  --primary-glow-strong: rgba(232, 48, 74, 0.22);
+  /* Brand — professional blue (not candy red) */
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-light: #3b82f6;
+  --primary-glow: rgba(37, 99, 235, 0.10);
+  --primary-glow-strong: rgba(37, 99, 235, 0.22);
 
-  /* Fruit accent palette */
-  --cyan: #ff8c42;          /* mango orange */
-  --cyan-glow: rgba(255, 140, 66, 0.12);
-  --emerald: #42b883;       /* kiwi green */
-  --emerald-glow: rgba(66, 184, 131, 0.12);
-  --amber: #f7b731;         /* lemon yellow */
-  --amber-glow: rgba(247, 183, 49, 0.12);
-  --rose: #e84393;          /* dragonfruit pink */
-  --rose-glow: rgba(232, 67, 147, 0.10);
-  --violet: #9b59b6;        /* blueberry purple */
-  --violet-glow: rgba(155, 89, 182, 0.10);
+  /* Semantic (use sparingly) */
+  --success: #047857;
+  --success-soft: #d1fae5;
+  --warning: #b45309;
+  --warning-soft: #fef3c7;
+  --danger: #b91c1c;
+  --danger-soft: #fee2e2;
 
-  /* Text — dark on light */
-  --text-1: #1a1208;
-  --text-2: #5c4a35;
-  --text-3: #9e8a72;
-  --text-4: #c8b8a2;
+  /* Aliases so old components don't explode — all map to system */
+  --cyan: #2563eb;
+  --cyan-glow: rgba(37, 99, 235, 0.10);
+  --emerald: #047857;
+  --emerald-glow: rgba(4, 120, 87, 0.12);
+  --amber: #b45309;
+  --amber-glow: rgba(180, 83, 9, 0.12);
+  --rose: #b91c1c;
+  --rose-glow: rgba(185, 28, 28, 0.10);
+  --violet: #1e3a8a;
+  --violet-glow: rgba(30, 58, 138, 0.10);
+
+  /* Pipeline stages — ordered progression (read left→right = deeper blue → green) */
+  --stage-1: #64748b;          /* Applied */
+  --stage-1-soft: #f1f5f9;
+  --stage-2: #3b82f6;          /* Screened */
+  --stage-2-soft: #eff6ff;
+  --stage-3: #1d4ed8;          /* Interview */
+  --stage-3-soft: #dbeafe;
+  --stage-4: #1e3a8a;          /* Offer */
+  --stage-4-soft: #e0e7ff;
+  --stage-5: #047857;          /* Hired = success */
+  --stage-5-soft: #d1fae5;
+  --stage-x: #94a3b8;          /* Rejected = out */
+  --stage-x-soft: #f8fafc;
+
+  --text-1: #0f172a;
+  --text-2: #334155;
+  --text-3: #64748b;
+  --text-4: #94a3b8;
 
   --sidebar-width: 228px;
   --topbar-height: 58px;
@@ -56,11 +82,7 @@ html { height: 100%; }
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--bg);
-  background-image:
-    radial-gradient(ellipse at 10% 20%, rgba(232, 48, 74, 0.06), transparent 40%),
-    radial-gradient(ellipse at 90% 10%, rgba(255, 140, 66, 0.07), transparent 40%),
-    radial-gradient(ellipse at 50% 90%, rgba(66, 184, 131, 0.05), transparent 35%);
-  background-attachment: fixed;
+  background-image: none;
   color: var(--text-1);
   height: 100%;
   overflow: hidden;
@@ -68,6 +90,16 @@ body {
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Clean table header utility */
+.table-head th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  background: var(--surface-2);
 }
 
 #root { height: 100%; }
@@ -160,25 +192,25 @@ body {
 
 /* ─── Cards ─────────────────────────────────── */
 .card {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.07);
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0,0,0,0.04);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
   border-radius: var(--radius-lg);
   transition: all var(--t-fast);
 }
 
 .card-lift {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 3px 12px rgba(15, 23, 42, 0.04);
   transition: all var(--t-base);
   cursor: pointer;
 }
 .card-lift:hover {
-  border-color: rgba(0, 0, 0, 0.12);
-  transform: translateY(-3px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.10);
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.08), 0 2px 8px rgba(15, 23, 42, 0.05);
 }
 
 /* ─── Sidebar Navigation ────────────────────── */
@@ -202,8 +234,8 @@ body {
 }
 .nav-link.active {
   background: var(--primary-glow);
-  color: var(--primary);
-  border-color: rgba(232,48,74,0.18);
+  color: var(--primary-dark);
+  border-color: rgba(37,99,235,0.2);
   font-weight: 600;
 }
 .nav-link .nav-icon { opacity: 0.6; flex-shrink: 0; }
@@ -220,11 +252,25 @@ body {
   font-weight: 600;
   letter-spacing: 0.03em;
 }
-.badge-active  { background: var(--emerald-glow); color: var(--emerald);  border: 1px solid rgba(16,185,129,0.2); }
-.badge-draft   { background: rgba(255,255,255,0.04); color: var(--text-2); border: 1px solid var(--border); }
-.badge-closed  { background: var(--rose-glow);    color: var(--rose);    border: 1px solid rgba(244,63,94,0.2); }
-.badge-primary { background: var(--primary-glow); color: var(--primary-light); border: 1px solid rgba(109,92,255,0.25); }
-.badge-cyan    { background: var(--cyan-glow);    color: var(--cyan);    border: 1px solid rgba(34,211,238,0.2); }
+.badge-active  { background: var(--success-soft); color: var(--success); border: 1px solid rgba(4,120,87,0.2); }
+.badge-draft   { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+.badge-closed  { background: var(--danger-soft); color: var(--danger); border: 1px solid rgba(185,28,28,0.2); }
+.badge-primary { background: var(--primary-glow); color: var(--primary-dark); border: 1px solid rgba(37,99,235,0.22); }
+.badge-cyan    { background: var(--primary-glow); color: var(--primary); border: 1px solid rgba(37,99,235,0.2); }
+
+/* Stage badges — use with data-stage or class stage-badge-* */
+.stage-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 6px;
+  font-size: 11px; font-weight: 700;
+  border: 1px solid transparent;
+}
+.stage-badge-applied   { background: var(--stage-1-soft); color: var(--stage-1); border-color: rgba(100,116,139,0.25); }
+.stage-badge-screened  { background: var(--stage-2-soft); color: var(--stage-2); border-color: rgba(59,130,246,0.25); }
+.stage-badge-interview { background: var(--stage-3-soft); color: var(--stage-3); border-color: rgba(29,78,216,0.25); }
+.stage-badge-offer     { background: var(--stage-4-soft); color: var(--stage-4); border-color: rgba(30,58,138,0.25); }
+.stage-badge-hired     { background: var(--stage-5-soft); color: var(--stage-5); border-color: rgba(4,120,87,0.25); }
+.stage-badge-rejected  { background: var(--stage-x-soft); color: var(--stage-x); border-color: rgba(148,163,184,0.35); }
 
 /* ─── Buttons ───────────────────────────────── */
 .btn {
@@ -261,7 +307,7 @@ body {
   border: 1px solid var(--border);
 }
 .btn-ghost:hover {
-  background: rgba(255,255,255,0.04);
+  background: rgba(0,0,0,0.04);
   color: var(--text-1);
   border-color: var(--border-hover);
 }
@@ -279,7 +325,7 @@ body {
   border: none;
   transition: all var(--t-fast);
 }
-.btn-icon:hover { background: rgba(255,255,255,0.05); color: var(--text-1); }
+.btn-icon:hover { background: rgba(0,0,0,0.05); color: var(--text-1); }
 
 /* ─── Inputs ────────────────────────────────── */
 .input {
@@ -340,7 +386,7 @@ body {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(20,10,5,0.40);
+  background: rgba(15, 23, 42, 0.36);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 50;
@@ -380,9 +426,9 @@ body {
 
 /* ─── Score pills ───────────────────────────── */
 .score { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; }
-.score-hi  { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(16,185,129,0.25); }
-.score-mid { background: var(--amber-glow);   color: var(--amber);   border: 1px solid rgba(245,158,11,0.25); }
-.score-lo  { background: var(--rose-glow);    color: var(--rose);    border: 1px solid rgba(244,63,94,0.25); }
+.score-hi  { background: var(--success-soft); color: var(--success); border: 1px solid rgba(4,120,87,0.25); }
+.score-mid { background: var(--stage-2-soft); color: var(--stage-3); border: 1px solid rgba(29,78,216,0.2); }
+.score-lo  { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
 
 /* ─── Status dot ────────────────────────────── */
 .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
@@ -390,13 +436,13 @@ body {
 .dot-draft   { background: var(--text-3); }
 .dot-closed  { background: var(--rose); }
 
-/* ─── Kanban stage colors ───────────────────── */
-.stage-Applied  { border-top: 2px solid var(--cyan); }
-.stage-Screened { border-top: 2px solid var(--violet); }
-.stage-Interview{ border-top: 2px solid var(--amber); }
-.stage-Offer    { border-top: 2px solid var(--primary); }
-.stage-Hired    { border-top: 2px solid var(--emerald); }
-.stage-Rejected { border-top: 2px solid var(--rose); }
+/* ─── Stage borders (ordered progression) ───── */
+.stage-Applied  { border-top: 2px solid var(--stage-1); }
+.stage-Screened { border-top: 2px solid var(--stage-2); }
+.stage-Interview{ border-top: 2px solid var(--stage-3); }
+.stage-Offer    { border-top: 2px solid var(--stage-4); }
+.stage-Hired    { border-top: 2px solid var(--stage-5); }
+.stage-Rejected { border-top: 2px solid var(--stage-x); }
 
 /* ─── Filter tabs ───────────────────────────── */
 .tab-bar { display: flex; gap: 2px; background: rgba(0,0,0,0.04); padding: 3px; border-radius: var(--radius-md); border: 1px solid var(--border); }
@@ -466,8 +512,8 @@ body {
 }
 .kanban-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(232, 48, 74, 0.4) !important;
-  box-shadow: 0 8px 24px rgba(232, 48, 74, 0.10) !important;
+  border-color: rgba(37, 99, 235, 0.35) !important;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.10) !important;
 }
 .kanban-card:active {
   cursor: grabbing;
@@ -480,11 +526,34 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 3px 12px rgba(15, 23, 42, 0.03);
+}
+.kpi-card.kpi-primary {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(37, 99, 235, 0.02) 100%);
+  border-color: rgba(37, 99, 235, 0.16);
+}
+.kpi-card.kpi-success {
+  background: linear-gradient(135deg, rgba(4, 120, 87, 0.08) 0%, rgba(4, 120, 87, 0.02) 100%);
+  border-color: rgba(4, 120, 87, 0.16);
+}
+.kpi-card.kpi-warning {
+  background: linear-gradient(135deg, rgba(180, 83, 9, 0.08) 0%, rgba(180, 83, 9, 0.02) 100%);
+  border-color: rgba(180, 83, 9, 0.16);
+}
+.kpi-card.kpi-muted {
+  background: linear-gradient(135deg, rgba(100, 116, 139, 0.08) 0%, rgba(100, 116, 139, 0.02) 100%);
+  border-color: rgba(100, 116, 139, 0.16);
 }
 .kpi-icon {
-  width: 36px; height: 36px;
-  border-radius: 9px;
-  display: flex; align-items: center; justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-glow);
   flex-shrink: 0;
 }
 .kpi-val {

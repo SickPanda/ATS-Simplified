@@ -49,7 +49,6 @@ export default function LoginView() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'radial-gradient(circle at top right, rgba(232, 48, 74, 0.08), transparent 40%), radial-gradient(circle at bottom left, rgba(255, 140, 66, 0.08), transparent 40%)',
       backgroundColor: 'var(--bg)'
     }}>
       <div className="card" style={{
@@ -62,10 +61,10 @@ export default function LoginView() {
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{
             width: 56, height: 56, borderRadius: 16,
-            background: 'linear-gradient(135deg, var(--primary) 0%, var(--rose) 100%)',
+            background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', margin: '0 auto 16px',
-            boxShadow: '0 8px 24px rgba(232, 48, 74, 0.25)'
+            boxShadow: '0 8px 24px var(--primary-glow-strong)'
           }}>
             <Building2 size={28} />
           </div>
@@ -75,10 +74,11 @@ export default function LoginView() {
 
         {error && (
           <div style={{
-            background: 'rgba(232, 48, 74, 0.1)',
-            color: 'var(--rose)',
+            background: 'var(--danger-soft)',
+            color: 'var(--danger)',
             padding: '12px 16px',
             borderRadius: 8,
+            border: '1px solid rgba(185, 28, 28, 0.2)',
             fontSize: 13,
             fontWeight: 500,
             marginBottom: 24,

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 const TABS = [
   { id: 'company',      label: 'Company Profile', icon: Building2 },
   { id: 'account',      label: 'My Account',      icon: User },
+  { id: 'email',        label: 'Email (SMTP)',    icon: Mail },
   { id: 'integrations', label: 'Integrations',    icon: Zap },
   { id: 'security',     label: 'Security',         icon: Lock },
 ];
@@ -13,11 +14,21 @@ export default function SettingsView() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('company');
 
-  // --- Gemini API state ---
+  // --- Groq (free Llama) optional boost ---
   const [apiKey, setApiKey] = useState('');
   const [masked, setMasked] = useState(true);
   const [connStatus, setConnStatus] = useState('idle');
   const [saved, setSaved] = useState(false);
+
+  // --- Email SMTP ---
+  const [emailCfg, setEmailCfg] = useState({
+    enabled: true, host: '', port: 587, user: '', password: '',
+    fromEmail: '', fromName: 'ATS Pro', enableSsl: true, hasPassword: false, mode: 'log_only',
+  });
+  const [emailSaved, setEmailSaved] = useState(false);
+  const [emailTestMsg, setEmailTestMsg] = useState('');
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [templates, setTemplates] = useState([]);
 
   // --- Company Profile state ---
   const [company, setCompany] = useState({
@@ -51,7 +62,7 @@ export default function SettingsView() {
   const [profileSaved, setProfileSaved] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem('gemini_api_key');
+    const stored = localStorage.getItem('groq_api_key') || localStorage.getItem('gemini_api_key');
     if (stored) setApiKey(stored);
     
     // Load saved company/profile from localStorage if exists
@@ -61,17 +72,100 @@ export default function SettingsView() {
     if (storedProfile) setProfile(JSON.parse(storedProfile));
   }, []);
 
-  const testGeminiConnection = async () => {
+  useEffect(() => {
+    if (activeTab !== 'email') return;
+    fetch('/api/ats/email/settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        setEmailCfg({
+          enabled: d.enabled !== false,
+          host: d.host || '',
+          port: d.port || 587,
+          user: d.user || '',
+          password: '',
+          fromEmail: d.fromEmail || '',
+          fromName: d.fromName || 'ATS Pro',
+          enableSsl: d.enableSsl !== false,
+          hasPassword: !!d.hasPassword,
+          mode: d.mode || 'log_only',
+        });
+      })
+      .catch(() => {});
+    fetch('/api/ats/email/templates')
+      .then(r => r.ok ? r.json() : [])
+      .then(t => setTemplates(Array.isArray(t) ? t : []))
+      .catch(() => {});
+  }, [activeTab]);
+
+  const saveEmailSettings = async () => {
+    setEmailBusy(true);
+    setEmailTestMsg('');
+    try {
+      const res = await fetch('/api/ats/email/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enabled: emailCfg.enabled,
+          host: emailCfg.host,
+          port: Number(emailCfg.port) || 587,
+          user: emailCfg.user,
+          password: emailCfg.password || null,
+          fromEmail: emailCfg.fromEmail,
+          fromName: emailCfg.fromName,
+          enableSsl: emailCfg.enableSsl,
+        }),
+      });
+      if (!res.ok) throw new Error('Save failed');
+      const d = await res.json();
+      setEmailCfg(prev => ({
+        ...prev,
+        password: '',
+        hasPassword: !!d.hasPassword,
+        mode: d.mode || (d.configured ? 'smtp' : 'log_only'),
+      }));
+      setEmailSaved(true);
+      setTimeout(() => setEmailSaved(false), 2500);
+    } catch (e) {
+      setEmailTestMsg(e.message || 'Save failed');
+    } finally {
+      setEmailBusy(false);
+    }
+  };
+
+  const testEmail = async () => {
+    setEmailBusy(true);
+    setEmailTestMsg('');
+    try {
+      const res = await fetch('/api/ats/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: user?.email || emailCfg.fromEmail }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (d.ok) setEmailTestMsg(`Sent test to ${d.to}`);
+      else if (d.status === 'LoggedOnly') setEmailTestMsg('SMTP not ready — message logged only. Save host/from first.');
+      else setEmailTestMsg(d.error || d.message || 'Test failed');
+    } catch {
+      setEmailTestMsg('Test failed');
+    } finally {
+      setEmailBusy(false);
+    }
+  };
+
+  const testGroqConnection = async () => {
     if (!apiKey.trim()) return;
     setConnStatus('testing');
     try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey.trim()}`);
+      const r = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { Authorization: `Bearer ${apiKey.trim()}` }
+      });
       setConnStatus(r.ok ? 'ok' : 'fail');
     } catch { setConnStatus('fail'); }
   };
 
   const saveApiKey = () => {
-    localStorage.setItem('gemini_api_key', apiKey.trim());
+    localStorage.setItem('groq_api_key', apiKey.trim());
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -358,49 +452,44 @@ export default function SettingsView() {
               <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 3 }}>Connect AI, email providers, and third-party tools</p>
             </div>
 
-            {/* Gemini AI Section */}
-            <div className="card" style={{ overflow: 'hidden' }}>
-              <div style={{ height: 3, background: 'linear-gradient(90deg, var(--primary), var(--cyan))', borderRadius: '14px 14px 0 0' }} />
-              <div style={{ padding: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Zap size={17} color="var(--primary-light)" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>Google Gemini AI</h3>
-                    <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 1 }}>Powers resume parsing, candidate summarization and email pitch generation</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <ConnIcon />
-                    {connStatus === 'ok' && <span className="badge badge-active">Connected</span>}
-                    {connStatus === 'fail' && <span className="badge badge-closed">Failed</span>}
-                  </div>
+            {/* ATS Pro Intelligence — in-app only */}
+            <div className="card" style={{ padding: 24, border: '1px solid rgba(4,120,87,0.28)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--success-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Shield size={17} color="var(--success)" />
                 </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>ATS Pro Intelligence</h3>
+                  <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 1 }}>
+                    In-app resume engine · no external AI · data stays on your server
+                  </p>
+                </div>
+                <span className="badge badge-active">Installed</span>
+              </div>
+              <p style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.55, marginTop: 10 }}>
+                Parses PDF/DOCX for name, contact, role, experience, education, location, work authorization,
+                80+ staffing skills, summary, LinkedIn, and work-history signals — with a confidence score.
+                No Gemini, Groq, or OpenAI required. Runs on Azure Free tier.
+              </p>
+              <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-3)', lineHeight: 1.55 }}>
+                <strong style={{ color: 'var(--text-2)' }}>Formats:</strong> text PDF, DOCX, TXT.
+                Image-only/scanned PDFs are not supported yet (use DOCX or paste via Quick Parse).
+                <br />
+                <strong style={{ color: 'var(--text-2)' }}>Roadmap:</strong> Private self-hosted model for paid “Private AI” SKU.
+              </div>
+            </div>
 
-                <label className="label">GEMINI API KEY</label>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-                  <div style={{ position: 'relative', flex: 1 }}>
-                    <input
-                      className="input"
-                      value={displayKey}
-                      placeholder="AIza..."
-                      onChange={e => { setApiKey(e.target.value); setMasked(false); }}
-                      onFocus={() => setMasked(false)}
-                      onBlur={() => setMasked(true)}
-                      style={{ fontFamily: 'monospace', fontSize: 13, paddingRight: 40 }}
-                    />
+            <div className="card" style={{ padding: 20, opacity: 0.85 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>External AI APIs</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                    Not used for resume parse. Core Intelligence is 100% in-app.
                   </div>
-                  <button className="btn btn-ghost" onClick={testGeminiConnection} disabled={!apiKey || connStatus === 'testing'}>
-                    <RefreshCw size={14} /> Test
-                  </button>
-                  <button className="btn btn-primary" onClick={saveApiKey}>
-                    {saved ? <><CheckCircle2 size={14} /> Saved!</> : <><Save size={14} /> Save Key</>}
-                  </button>
                 </div>
-
-                <div style={{ padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-3)', lineHeight: 1.6 }}>
-                  Get your free API key at <strong style={{ color: 'var(--primary-light)' }}>ai.google.dev</strong> · The key is stored in your browser's localStorage and sent via <code>X-Gemini-Key</code> header.
-                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: 'rgba(255,255,255,0.04)', color: 'var(--text-3)', border: '1px solid var(--border)' }}>
+                  Disabled
+                </span>
               </div>
             </div>
 
@@ -428,6 +517,102 @@ export default function SettingsView() {
                 </div>
               </div>
             ))}
+          </>
+        )}
+
+        {/* ── EMAIL SMTP ── */}
+        {activeTab === 'email' && (
+          <>
+            <div>
+              <h2 style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 20, color: 'var(--text-1)' }}>Email (SMTP)</h2>
+              <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 3 }}>
+                Send real outreach from Candidates. Without SMTP, messages are logged to the timeline only.
+              </p>
+            </div>
+
+            <div className="card" style={{ padding: 18, border: emailCfg.mode === 'smtp' ? '1px solid rgba(4,120,87,0.25)' : '1px solid var(--border)', background: emailCfg.mode === 'smtp' ? 'var(--success-soft)' : 'var(--surface)' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                Mode: {emailCfg.mode === 'smtp' ? 'SMTP ready — live send' : 'Log only — configure host + from address'}
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
+                Env fallbacks also work: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM
+              </p>
+            </div>
+
+            <div className="card" style={{ padding: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="checkbox" id="emailEnabled" checked={emailCfg.enabled} onChange={e => setEmailCfg({ ...emailCfg, enabled: e.target.checked })} />
+                  <label htmlFor="emailEnabled" style={{ fontSize: 13, color: 'var(--text-1)' }}>Enable SMTP sending</label>
+                </div>
+                <div>
+                  <label className="label">SMTP HOST</label>
+                  <input className="input" placeholder="smtp.office365.com" value={emailCfg.host} onChange={e => setEmailCfg({ ...emailCfg, host: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label">PORT</label>
+                  <input className="input" type="number" value={emailCfg.port} onChange={e => setEmailCfg({ ...emailCfg, port: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label">USERNAME</label>
+                  <input className="input" placeholder="you@company.com" value={emailCfg.user} onChange={e => setEmailCfg({ ...emailCfg, user: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label">PASSWORD {emailCfg.hasPassword ? '(saved — leave blank to keep)' : ''}</label>
+                  <input className="input" type="password" placeholder="••••••••" value={emailCfg.password} onChange={e => setEmailCfg({ ...emailCfg, password: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label">FROM EMAIL</label>
+                  <input className="input" placeholder="recruiting@company.com" value={emailCfg.fromEmail} onChange={e => setEmailCfg({ ...emailCfg, fromEmail: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label">FROM NAME</label>
+                  <input className="input" value={emailCfg.fromName} onChange={e => setEmailCfg({ ...emailCfg, fromName: e.target.value })} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="checkbox" id="emailSsl" checked={emailCfg.enableSsl} onChange={e => setEmailCfg({ ...emailCfg, enableSsl: e.target.checked })} />
+                  <label htmlFor="emailSsl" style={{ fontSize: 13, color: 'var(--text-1)' }}>Enable SSL/TLS</label>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
+                <button type="button" className="btn btn-primary" disabled={emailBusy} onClick={saveEmailSettings}>
+                  <Save size={14} /> {emailSaved ? 'Saved' : 'Save settings'}
+                </button>
+                <button type="button" className="btn btn-ghost" disabled={emailBusy} onClick={testEmail}>
+                  <Mail size={14} /> Send test to me
+                </button>
+              </div>
+              {emailTestMsg && (
+                <p style={{ marginTop: 12, fontSize: 12.5, color: emailTestMsg.startsWith('Sent') ? 'var(--success)' : 'var(--warning)' }}>
+                  {emailTestMsg}
+                </p>
+              )}
+            </div>
+
+            <div className="card" style={{ padding: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>Templates</h3>
+              <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 14 }}>
+                Used in Candidates mass email. Tokens: {'{{FirstName}}'}, {'{{Name}}'}, {'{{Role}}'}, {'{{JobTitle}}'}, {'{{JobCode}}'}, {'{{Location}}'}
+              </p>
+              {templates.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--text-3)' }}>No templates yet — open Candidates → mass email once to seed defaults, or refresh.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {templates.map(t => (
+                    <div key={t.id} style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface-2)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>{t.name}</span>
+                        {t.isSystem && <span className="badge badge-primary" style={{ fontSize: 10 }}>System</span>}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>{t.subject}</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 6, whiteSpace: 'pre-wrap' }}>
+                        {(t.body || '').slice(0, 180)}{(t.body || '').length > 180 ? '…' : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </>
         )}
 

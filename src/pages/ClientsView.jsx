@@ -1,11 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Plus, Search, Mail, Phone, MapPin, X, FileText, Send, Globe, Landmark, CreditCard, User, Users, PlusCircle, Trash2 } from 'lucide-react';
+import { Building2, Plus, Search, Mail, Phone, MapPin, X, FileText, Send, Globe, Landmark, CreditCard, User, Users, PlusCircle, Trash2, Download } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { downloadCsvExport } from '../lib/export';
+import { isMine } from '../lib/ownership';
+
+function ownerLabel(user) {
+  if (!user) return '';
+  const raw = user.name || user.email?.split('@')[0] || '';
+  const parts = raw.split(/[._\s-]+/).filter(Boolean);
+  return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') || raw;
+}
 
 export default function ClientsView() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const me = ownerLabel(user);
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState('');
+  const [deskMode, setDeskMode] = useState('all');
   const [showDrawer, setShowDrawer] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
   const [submittals, setSubmittals] = useState([]);
@@ -17,7 +30,7 @@ export default function ClientsView() {
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
   const [website, setWebsite] = useState('');
-  const [primaryOwner, setPrimaryOwner] = useState('Aazam Qureshi');
+  const [primaryOwner, setPrimaryOwner] = useState(me);
   const [federalId, setFederalId] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('Net 30');
   const [aboutCompany, setAboutCompany] = useState('');
@@ -62,7 +75,7 @@ export default function ClientsView() {
       if (res.ok) {
         setShowDrawer(false);
         setName(''); setIndustry(''); setEmail(''); setPhone(''); setLocation('');
-        setWebsite(''); setPrimaryOwner('Aazam Qureshi'); setFederalId(''); setPaymentTerms('Net 30'); setAboutCompany('');
+        setWebsite(''); setPrimaryOwner(me); setFederalId(''); setPaymentTerms('Net 30'); setAboutCompany('');
         fetchClients();
       }
     } catch(err) { console.error(err); }
@@ -135,13 +148,15 @@ export default function ClientsView() {
     } catch(err) { console.error(err); }
   };
 
-  const filtered = clients.filter(c => 
-    !search || 
-    c.name?.toLowerCase().includes(search.toLowerCase()) || 
-    c.industry?.toLowerCase().includes(search.toLowerCase()) ||
-    c.location?.toLowerCase().includes(search.toLowerCase()) ||
-    c.primaryOwner?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = clients.filter(c => {
+    const searchOk = !search ||
+      c.name?.toLowerCase().includes(search.toLowerCase()) ||
+      c.industry?.toLowerCase().includes(search.toLowerCase()) ||
+      c.location?.toLowerCase().includes(search.toLowerCase()) ||
+      c.primaryOwner?.toLowerCase().includes(search.toLowerCase());
+    const deskOk = deskMode !== 'mine' || isMine(c.primaryOwner, user);
+    return searchOk && deskOk;
+  });
 
   return (
     <div style={{ padding: '28px 28px 40px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -155,27 +170,36 @@ export default function ClientsView() {
             Manage hiring companies and staffing clients
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowDrawer(true)}>
-          <Plus size={14} /> New Client
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-ghost" onClick={() => downloadCsvExport('clients').catch(e => alert(e.message))}>
+            <Download size={14} /> Export
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowDrawer(true)}>
+            <Plus size={14} /> New Client
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
       <div className="anim-fade-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, animationDelay: '0.05s' }}>
-        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(109,92,255,0.1) 0%, rgba(109,92,255,0.02) 100%)', border: '1px solid rgba(109,92,255,0.2)' }}>
-          <div className="kpi-icon" style={{ background: 'var(--primary-glow)' }}><Building2 size={18} color="var(--primary-light)" /></div>
+        <div className="kpi-card kpi-primary">
+          <div className="kpi-icon"><Building2 size={18} color="var(--primary)" /></div>
           <div className="kpi-val">{clients.length}</div>
           <div className="kpi-label">Active Clients</div>
         </div>
-        <div className="kpi-card" style={{ background: 'linear-gradient(135deg, rgba(34,211,238,0.1) 0%, rgba(34,211,238,0.02) 100%)', border: '1px solid rgba(34,211,238,0.2)' }}>
-          <div className="kpi-icon" style={{ background: 'rgba(34,211,238,0.15)' }}><MapPin size={18} color="var(--cyan)" /></div>
+        <div className="kpi-card kpi-muted">
+          <div className="kpi-icon" style={{ background: 'var(--surface-3)' }}><MapPin size={18} color="var(--text-2)" /></div>
           <div className="kpi-val">{new Set(clients.map(c => c.industry).filter(Boolean)).size}</div>
           <div className="kpi-label">Industries Represented</div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="anim-fade-up" style={{ display:'flex', gap:12, animationDelay:'0.05s' }}>
+      <div className="anim-fade-up" style={{ display:'flex', gap:12, animationDelay:'0.05s', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="tab-bar">
+          <button type="button" className={`tab${deskMode==='all'?' active':''}`} onClick={() => setDeskMode('all')}>All desk</button>
+          <button type="button" className={`tab${deskMode==='mine'?' active':''}`} onClick={() => setDeskMode('mine')}>My desk</button>
+        </div>
         <div className="input-search" style={{ flex:1, maxWidth:400 }}>
           <Search size={14} color="var(--text-3)" style={{flexShrink:0}} />
           <input
@@ -213,9 +237,9 @@ export default function ClientsView() {
               </div>
               <div style={{
                 padding:'4px 8px', borderRadius:99, fontSize:10, fontWeight:700, textTransform:'uppercase',
-                background: c.status==='Active' ? 'rgba(0,229,160,0.1)' : 'rgba(255,255,255,0.05)',
-                color: c.status==='Active' ? 'var(--emerald)' : 'var(--text-3)',
-                border: `1px solid ${c.status==='Active' ? 'rgba(0,229,160,0.2)' : 'var(--border)'}`
+                background: c.status==='Active' ? 'var(--success-soft)' : 'var(--surface-2)',
+                color: c.status==='Active' ? 'var(--success)' : 'var(--text-3)',
+                border: `1px solid ${c.status==='Active' ? 'rgba(4,120,87,0.2)' : 'var(--border)'}`
               }}>
                 {c.status}
               </div>
