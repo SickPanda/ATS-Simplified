@@ -120,23 +120,46 @@ export default function KanbanView({ isEmbedded = false }) {
 
   const submitToClient = async (e) => {
     e.preventDefault();
+    if (!job?.clientId) {
+      showToast('This job has no client assigned. Edit the requirement and set a client first.', 'error');
+      return;
+    }
     setSubmitting(true);
-    const r = await fetch('/api/ats/submittals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        candidateId: submittingApp.candidateId,
-        clientId: job.clientId,
-        jobId: job.id,
-        summary: submittalSummary,
-      }),
-    });
-    setSubmitting(false);
-    if (r.ok) {
-      setSubmittingApp(null);
-      setSubmittalSummary('');
-      showToast('Submitted to client', 'success');
-    } else showToast(await r.text());
+    try {
+      const r = await fetch('/api/ats/submittals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidateId: submittingApp.candidateId,
+          clientId: job.clientId,
+          jobId: job.id,
+          summary: submittalSummary,
+          status: 'Submitted to Client',
+        }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok) {
+        const appId = submittingApp.id;
+        // Optimistic: move to Submitted stage
+        setApplications(prev => prev.map(a =>
+          a.id === appId ? { ...a, stage: data.stage || 'Submitted' } : a
+        ));
+        if (selectedId === appId) {
+          setSelectedId(appId); // keep selection; stage comes from apps refresh
+        }
+        setSubmittingApp(null);
+        setSubmittalSummary('');
+        showToast(data.message || 'Submitted to client · stage → Submitted to Client', 'success');
+        await fetchApps();
+      } else {
+        const msg = data.message || (typeof data === 'string' ? data : 'Submit failed');
+        showToast(msg, 'error');
+      }
+    } catch {
+      showToast('Could not reach server to submit.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const scheduleInterview = async (e) => {
@@ -459,17 +482,20 @@ export default function KanbanView({ isEmbedded = false }) {
                       </td>
                       <td style={{ ...td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          {job.clientId && app.stage !== 'Rejected' && app.stage !== 'Hired' && (
+                          {job.clientId && ['Applied', 'Screened'].includes(app.stage) && (
                             <button type="button" style={actionBtn('#0ea5e9')} onClick={() => setSubmittingApp(app)}>
-                              <Send size={12} /> Submit
+                              <Send size={12} /> Submit to client
                             </button>
                           )}
-                          {(app.stage === 'Screened' || app.stage === 'Interview' || app.stage === 'Applied') && (
+                          {app.stage === 'Submitted' && (
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#3b82f6', alignSelf: 'center' }}>On client desk</span>
+                          )}
+                          {['Submitted', 'Interview', 'Screened'].includes(app.stage) && (
                             <button type="button" style={actionBtn('#b45309')} onClick={() => setInterviewingApp(app)}>
-                              <CalendarPlus size={12} /> Interview
+                              <CalendarPlus size={12} /> Client interview
                             </button>
                           )}
-                          {(app.stage === 'Offer' || app.stage === 'Interview' || app.stage === 'Hired') && (
+                          {['Interview', 'Offer', 'Hired'].includes(app.stage) && (
                             <button type="button" style={actionBtn('#047857')} onClick={() => openPlacement(app)}>
                               <CheckCircle2 size={12} /> Place
                             </button>
@@ -585,17 +611,29 @@ export default function KanbanView({ isEmbedded = false }) {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
-                    {job.clientId && selected.stage !== 'Rejected' && selected.stage !== 'Hired' && (
+                    {job.clientId && ['Applied', 'Screened'].includes(selected.stage) && (
                       <button type="button" className="btn btn-primary" style={{ width: '100%' }} onClick={() => setSubmittingApp(selected)}>
                         <Send size={14} /> Submit to client
                       </button>
                     )}
-                    <button type="button" className="btn btn-ghost" style={{ width: '100%' }} onClick={() => setInterviewingApp(selected)}>
-                      <CalendarPlus size={14} /> Schedule interview
-                    </button>
-                    <button type="button" className="btn btn-ghost" style={{ width: '100%', borderColor: 'rgba(4,120,87,0.35)', color: 'var(--success)' }} onClick={() => openPlacement(selected)}>
-                      <CheckCircle2 size={14} /> Place with rates
-                    </button>
+                    {selected.stage === 'Submitted' && (
+                      <div style={{
+                        padding: '10px 12px', borderRadius: 10, fontSize: 12.5, fontWeight: 600,
+                        background: 'var(--stage-3-soft)', color: 'var(--stage-3)', border: '1px solid rgba(59,130,246,0.25)',
+                      }}>
+                        On client desk — next: client interview or offer
+                      </div>
+                    )}
+                    {['Submitted', 'Interview', 'Screened', 'Offer'].includes(selected.stage) && (
+                      <button type="button" className="btn btn-ghost" style={{ width: '100%' }} onClick={() => setInterviewingApp(selected)}>
+                        <CalendarPlus size={14} /> Schedule client interview
+                      </button>
+                    )}
+                    {['Interview', 'Offer', 'Hired'].includes(selected.stage) && (
+                      <button type="button" className="btn btn-ghost" style={{ width: '100%', borderColor: 'rgba(4,120,87,0.35)', color: 'var(--success)' }} onClick={() => openPlacement(selected)}>
+                        <CheckCircle2 size={14} /> Place with rates
+                      </button>
+                    )}
                   </div>
 
                   <div style={{ fontSize: 11, color: 'var(--text-4)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -670,13 +708,23 @@ export default function KanbanView({ isEmbedded = false }) {
               <button type="button" className="btn-icon" onClick={() => setSubmittingApp(null)}><X size={16} /></button>
             </div>
             <form onSubmit={submitToClient} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
+              <div style={{
+                padding: 12, borderRadius: 10, background: 'var(--primary-glow)', border: '1px solid rgba(37,99,235,0.2)',
+                fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.45,
+              }}>
+                This packages the candidate for the client and moves their pipeline stage to
+                <strong style={{ color: 'var(--primary)' }}> Submitted to Client</strong>
+                {' '}(before interview / offer).
+              </div>
               <div>
                 <label className="label">NOTES FOR CLIENT</label>
-                <textarea className="input" rows={5} style={{ resize: 'vertical' }} placeholder="Why they fit…" value={submittalSummary} onChange={e => setSubmittalSummary(e.target.value)} />
+                <textarea className="input" rows={5} style={{ resize: 'vertical' }} placeholder="Why they fit, rate notes, availability…" value={submittalSummary} onChange={e => setSubmittalSummary(e.target.value)} />
               </div>
               <div style={{ marginTop: 'auto', display: 'flex', gap: 10 }}>
                 <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setSubmittingApp(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={submitting}>{submitting ? 'Sending…' : 'Submit'}</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={submitting}>
+                  {submitting ? 'Submitting…' : 'Submit to client'}
+                </button>
               </div>
             </form>
           </div>

@@ -1,6 +1,7 @@
 /**
  * Single source of truth for hiring-stage colors.
- * Progression = blue family getting deeper, then green = win, gray = out.
+ * Progression = blue ladder → green hire → gray out.
+ * Includes client submittal as its own step before interview/offer.
  */
 export const STAGES = [
   {
@@ -14,27 +15,34 @@ export const STAGES = [
     id: 'Screened',
     label: 'Screened',
     step: 2,
-    colorHex: '#3b82f6',
+    colorHex: '#60a5fa',
     softHex: '#eff6ff',
   },
   {
-    id: 'Interview',
-    label: 'Interview',
+    id: 'Submitted',
+    label: 'Submitted to Client',
     step: 3,
+    colorHex: '#3b82f6',
+    softHex: '#dbeafe',
+  },
+  {
+    id: 'Interview',
+    label: 'Client Interview',
+    step: 4,
     colorHex: '#1d4ed8',
     softHex: '#dbeafe',
   },
   {
     id: 'Offer',
     label: 'Offer',
-    step: 4,
+    step: 5,
     colorHex: '#1e3a8a',
     softHex: '#e0e7ff',
   },
   {
     id: 'Hired',
     label: 'Hired',
-    step: 5,
+    step: 6,
     colorHex: '#047857',
     softHex: '#d1fae5',
   },
@@ -47,9 +55,15 @@ export const STAGES = [
   },
 ];
 
-export const ACTIVE_STEPS = 5;
+export const ACTIVE_STEPS = 6;
+
+/** Pipeline progression without Rejected */
+export const PIPELINE_STAGE_IDS = STAGES.filter(s => s.id !== 'Rejected').map(s => s.id);
 
 export function getStage(id) {
+  // Legacy alias if any UI used longer names
+  if (id === 'Submitted to Client' || id === 'ClientSubmit') id = 'Submitted';
+  if (id === 'Client Interview') id = 'Interview';
   return STAGES.find(s => s.id === id) || STAGES[0];
 }
 

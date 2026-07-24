@@ -40,17 +40,19 @@
   --violet: #1e3a8a;
   --violet-glow: rgba(30, 58, 138, 0.10);
 
-  /* Pipeline stages — ordered progression (read left→right = deeper blue → green) */
+  /* Pipeline stages — Applied → Screened → Submitted → Interview → Offer → Hired */
   --stage-1: #64748b;          /* Applied */
   --stage-1-soft: #f1f5f9;
-  --stage-2: #3b82f6;          /* Screened */
+  --stage-2: #60a5fa;          /* Screened */
   --stage-2-soft: #eff6ff;
-  --stage-3: #1d4ed8;          /* Interview */
+  --stage-3: #3b82f6;          /* Submitted to Client */
   --stage-3-soft: #dbeafe;
-  --stage-4: #1e3a8a;          /* Offer */
-  --stage-4-soft: #e0e7ff;
-  --stage-5: #047857;          /* Hired = success */
-  --stage-5-soft: #d1fae5;
+  --stage-4: #1d4ed8;          /* Client Interview */
+  --stage-4-soft: #dbeafe;
+  --stage-5: #1e3a8a;          /* Offer */
+  --stage-5-soft: #e0e7ff;
+  --stage-6: #047857;          /* Hired */
+  --stage-6-soft: #d1fae5;
   --stage-x: #94a3b8;          /* Rejected = out */
   --stage-x-soft: #f8fafc;
 
@@ -266,10 +268,11 @@ body {
   border: 1px solid transparent;
 }
 .stage-badge-applied   { background: var(--stage-1-soft); color: var(--stage-1); border-color: rgba(100,116,139,0.25); }
-.stage-badge-screened  { background: var(--stage-2-soft); color: var(--stage-2); border-color: rgba(59,130,246,0.25); }
-.stage-badge-interview { background: var(--stage-3-soft); color: var(--stage-3); border-color: rgba(29,78,216,0.25); }
-.stage-badge-offer     { background: var(--stage-4-soft); color: var(--stage-4); border-color: rgba(30,58,138,0.25); }
-.stage-badge-hired     { background: var(--stage-5-soft); color: var(--stage-5); border-color: rgba(4,120,87,0.25); }
+.stage-badge-screened  { background: var(--stage-2-soft); color: var(--stage-2); border-color: rgba(96,165,250,0.3); }
+.stage-badge-submitted { background: var(--stage-3-soft); color: var(--stage-3); border-color: rgba(59,130,246,0.3); }
+.stage-badge-interview { background: var(--stage-4-soft); color: var(--stage-4); border-color: rgba(29,78,216,0.25); }
+.stage-badge-offer     { background: var(--stage-5-soft); color: var(--stage-5); border-color: rgba(30,58,138,0.25); }
+.stage-badge-hired     { background: var(--stage-6-soft); color: var(--stage-6); border-color: rgba(4,120,87,0.25); }
 .stage-badge-rejected  { background: var(--stage-x-soft); color: var(--stage-x); border-color: rgba(148,163,184,0.35); }
 
 /* ─── Buttons ───────────────────────────────── */
@@ -437,12 +440,13 @@ body {
 .dot-closed  { background: var(--rose); }
 
 /* ─── Stage borders (ordered progression) ───── */
-.stage-Applied  { border-top: 2px solid var(--stage-1); }
-.stage-Screened { border-top: 2px solid var(--stage-2); }
-.stage-Interview{ border-top: 2px solid var(--stage-3); }
-.stage-Offer    { border-top: 2px solid var(--stage-4); }
-.stage-Hired    { border-top: 2px solid var(--stage-5); }
-.stage-Rejected { border-top: 2px solid var(--stage-x); }
+.stage-Applied   { border-top: 2px solid var(--stage-1); }
+.stage-Screened  { border-top: 2px solid var(--stage-2); }
+.stage-Submitted { border-top: 2px solid var(--stage-3); }
+.stage-Interview { border-top: 2px solid var(--stage-4); }
+.stage-Offer     { border-top: 2px solid var(--stage-5); }
+.stage-Hired     { border-top: 2px solid var(--stage-6); }
+.stage-Rejected  { border-top: 2px solid var(--stage-x); }
 
 /* ─── Filter tabs ───────────────────────────── */
 .tab-bar { display: flex; gap: 2px; background: rgba(0,0,0,0.04); padding: 3px; border-radius: var(--radius-md); border: 1px solid var(--border); }

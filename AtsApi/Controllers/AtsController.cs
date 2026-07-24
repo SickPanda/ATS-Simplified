@@ -594,15 +594,72 @@ public class AtsController : ControllerBase
             .FirstOrDefaultAsync(s => s.CandidateId == submittal.CandidateId && s.ClientId == submittal.ClientId && s.JobId == submittal.JobId);
             
         if (existing != null)
-            return BadRequest("Candidate already submitted to this client for this job.");
+            return Conflict(new { message = "Already submitted to this client for this job.", alreadySubmitted = true, submittalId = existing.Id });
 
+        if (submittal.CandidateId <= 0 || submittal.JobId <= 0)
+            return BadRequest(new { message = "Candidate and job are required." });
+        if (submittal.ClientId <= 0)
+            return BadRequest(new { message = "Job has no client — assign a client on the requirement first." });
+
+        // Pipeline stage: Submitted to Client (before interview / offer)
+        var app = await _context.Applications
+            .FirstOrDefaultAsync(a => a.CandidateId == submittal.CandidateId && a.JobId == submittal.JobId);
+
+        var previousStage = app?.Stage;
+        if (app != null)
+        {
+            // Don't regress past interview/offer/hired
+            var progressive = new[] { "Applied", "Screened", "Submitted" };
+            if (progressive.Contains(app.Stage) || string.IsNullOrWhiteSpace(app.Stage))
+            {
+                app.Stage = "Submitted";
+            }
+        }
+
+        submittal.Status = string.IsNullOrWhiteSpace(submittal.Status) ? "Submitted to Client" : submittal.Status;
         submittal.CreatedAt = DateTime.UtcNow;
         _context.Submittals.Add(submittal);
+
+        if (app != null && previousStage != app.Stage)
+        {
+            EnqueueActivity(app.CandidateId, "Stage",
+                $"Submitted to client · stage {previousStage ?? "—"} → Submitted", app.JobId);
+        }
+        else if (app != null)
+        {
+            EnqueueActivity(app.CandidateId, "System",
+                $"Submitted to client for job #{submittal.JobId}" +
+                (string.IsNullOrWhiteSpace(submittal.Summary) ? "" : $"\n\n{submittal.Summary}"),
+                app.JobId);
+        }
+
+        var cand = await _context.Candidates.FindAsync(submittal.CandidateId);
+        var job = await _context.Jobs.FindAsync(submittal.JobId);
+        _context.Notifications.Add(new Notification
+        {
+            RoleToNotify = "Admin",
+            Message = $"Submitted to client: {cand?.Name ?? "Candidate"} → {job?.Title ?? "job"}"
+        });
+
         await _context.SaveChangesAsync();
         await _audit.LogAsync(User, "Submittal", submittal.Id.ToString(), "Created",
             $"Submitted candidate #{submittal.CandidateId} to client #{submittal.ClientId} for job #{submittal.JobId}");
-        
-        return Ok(submittal);
+
+        return Ok(new
+        {
+            submittal.Id,
+            submittal.CandidateId,
+            submittal.ClientId,
+            submittal.JobId,
+            submittal.Status,
+            submittal.Summary,
+            submittal.CreatedAt,
+            applicationId = app?.Id,
+            stage = app?.Stage ?? "Submitted",
+            previousStage,
+            stageUpdated = app != null && previousStage != app.Stage,
+            message = $"Submitted {cand?.Name ?? "candidate"} to client. Pipeline stage: {app?.Stage ?? "Submitted"}."
+        });
     }
 
     // -- INTERVIEWS --
@@ -1091,7 +1148,7 @@ public class AtsController : ControllerBase
             .Select(c => new { c.Id, c.Name, c.Role, c.Source, c.CreatedAt })
             .ToListAsync();
 
-        var stages = new[] { "Applied", "Screened", "Interview", "Offer", "Hired" };
+        var stages = new[] { "Applied", "Screened", "Submitted", "Interview", "Offer", "Hired" };
         var funnel = stages.Select(stage => new {
             Stage = stage,
             Count = stageGroups.FirstOrDefault(g => g.Stage == stage)?.Count ?? 0

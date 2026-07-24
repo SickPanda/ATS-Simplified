@@ -49,7 +49,7 @@ public class Application
     public int Id { get; set; }
     public int CandidateId { get; set; }
     public int JobId { get; set; }
-    public string Stage { get; set; } = "Applied"; // Applied, Screened, Interview, Offer, Hired, Rejected
+    public string Stage { get; set; } = "Applied"; // Applied, Screened, Submitted, Interview, Offer, Hired, Rejected
     public int MatchScore { get; set; } = 0;
     public DateTime AppliedAt { get; set; } = DateTime.UtcNow;
 
