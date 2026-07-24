@@ -1,11 +1,9 @@
-import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, Users, Settings, Bell, Search, ChevronRight, Zap, Building2, LogOut, CheckCircle, X, Plug, ScrollText, Flame } from 'lucide-react';
+import { Routes, Route, NavLink, useLocation, useNavigate, Link } from 'react-router-dom';
+import { LayoutDashboard, Briefcase, Users, Settings, Bell, Search, ChevronRight, Zap, Building2, LogOut, CheckCircle, X, Plug, ScrollText, Flame, Clock, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import LoginView from '../pages/LoginView.jsx';
 import DashboardView from '../pages/DashboardView.jsx';
 import JobsView from '../pages/JobsView.jsx';
 import CandidatesView from '../pages/CandidatesView.jsx';
-import KanbanView from '../pages/KanbanView.jsx';
 import SettingsView from '../pages/SettingsView.jsx';
 import ClientsView from '../pages/ClientsView.jsx';
 import JobWorkspace from '../pages/JobWorkspace.jsx';
@@ -15,6 +13,7 @@ import IntegrationsView from '../pages/IntegrationsView.jsx';
 import AuditView from '../pages/AuditView.jsx';
 import HotlistsView from '../pages/HotlistsView.jsx';
 import TeamView from '../pages/TeamView.jsx';
+import BillingView from '../pages/BillingView.jsx';
 import { ArrowRightLeft } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 
@@ -24,6 +23,7 @@ const PAGE_TITLES = {
   '/candidates': 'Candidates',
   '/hotlists': 'Hotlists',
   '/placements': 'Pipeline & Placements',
+  '/billing': 'Time & Billing',
   '/clients': 'Clients',
   '/integrations': 'Integrations',
   '/audit': 'Audit & Export',
@@ -37,6 +37,7 @@ const NAV = [
   { label: 'Candidates',icon: Users,           path: '/candidates' },
   { label: 'Hotlists',  icon: Flame,           path: '/hotlists' },
   { label: 'Placements',icon: ArrowRightLeft,  path: '/placements' },
+  { label: 'Time & Billing', icon: Clock,      path: '/billing' },
   { label: 'Clients',   icon: Building2,       path: '/clients' },
   { label: 'Integrations', icon: Plug,         path: '/integrations' },
 ];
@@ -130,6 +131,16 @@ function Sidebar({ user, logout }) {
         padding: '12px 10px',
         borderTop: '1px solid var(--border)',
       }}>
+        <a
+          href="/careers"
+          target="_blank"
+          rel="noreferrer"
+          className="nav-link"
+          style={{ marginBottom: 8, fontSize: 12 }}
+        >
+          <ExternalLink size={14} className="nav-icon" />
+          Public careers
+        </a>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '8px 10px',
@@ -419,41 +430,36 @@ function Topbar({ user }) {
 }
 
 export default function Layout() {
-  const { user, loading, logout } = useAuth();
-
-  if (loading) return null;
-  if (!user) return <LoginView />;
-
-  const isRecruiter = user.roles?.includes('Recruiter');
+  const { user, logout } = useAuth();
+  const isRecruiter = user?.roles?.includes('Recruiter') && !user?.roles?.includes('Admin');
 
   return (
-    <Router>
-      <div style={{ display: 'flex', height: '100vh', background: 'transparent' }}>
-        <Sidebar user={user} logout={logout} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-          <Topbar user={user} />
-          <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-            <Routes>
-              <Route path="/"                      element={<DashboardView />} />
-              <Route path="/jobs"                   element={<JobsView />} />
-              <Route path="/jobs/:id/*"             element={<JobWorkspace />} />
-              <Route path="/candidates"             element={<CandidatesView />} />
-              <Route path="/hotlists"               element={<HotlistsView />} />
-              <Route path="/placements"             element={<PlacementsView />} />
-              <Route path="/integrations"           element={<IntegrationsView />} />
-              <Route path="/audit"                  element={<AuditView />} />
-              <Route path="/team"                   element={<TeamView />} />
-              <Route path="/settings"               element={<SettingsView />} />
-              {!isRecruiter && (
-                <>
-                  <Route path="/clients" element={<ClientsView />} />
-                  <Route path="/clients/:id/*" element={<ClientWorkspace />} />
-                </>
-              )}
-            </Routes>
-          </main>
-        </div>
+    <div style={{ display: 'flex', height: '100vh', background: 'transparent' }}>
+      <Sidebar user={user} logout={logout} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        <Topbar user={user} />
+        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          <Routes>
+            <Route path="/"                      element={<DashboardView />} />
+            <Route path="/jobs"                   element={<JobsView />} />
+            <Route path="/jobs/:id/*"             element={<JobWorkspace />} />
+            <Route path="/candidates"             element={<CandidatesView />} />
+            <Route path="/hotlists"               element={<HotlistsView />} />
+            <Route path="/placements"             element={<PlacementsView />} />
+            <Route path="/billing"                element={<BillingView />} />
+            <Route path="/integrations"           element={<IntegrationsView />} />
+            <Route path="/audit"                  element={<AuditView />} />
+            <Route path="/team"                   element={<TeamView />} />
+            <Route path="/settings"               element={<SettingsView />} />
+            {!isRecruiter && (
+              <>
+                <Route path="/clients" element={<ClientsView />} />
+                <Route path="/clients/:id/*" element={<ClientWorkspace />} />
+              </>
+            )}
+          </Routes>
+        </main>
       </div>
-    </Router>
+    </div>
   );
 }

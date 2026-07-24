@@ -2368,6 +2368,338 @@ public class AtsController : ControllerBase
             candidate = target
         });
     }
+
+    // ── TIMESHEETS ───────────────────────────────────────────
+    public class TimesheetDto
+    {
+        public int PlacementId { get; set; }
+        public DateTime WeekStart { get; set; }
+        public decimal Hours { get; set; }
+        public string? Notes { get; set; }
+        public bool Submit { get; set; }
+    }
+
+    private static DateTime NormalizeWeekStart(DateTime d)
+    {
+        var day = d.Date;
+        // Monday-based week
+        var diff = ((int)day.DayOfWeek + 6) % 7;
+        return day.AddDays(-diff);
+    }
+
+    [HttpGet("timesheets")]
+    public async Task<ActionResult> ListTimesheets([FromQuery] string? status, [FromQuery] int? placementId)
+    {
+        var q = _context.Timesheets.AsNoTracking()
+            .Include(t => t.Placement)!.ThenInclude(p => p!.Application)!.ThenInclude(a => a!.Candidate)
+            .Include(t => t.Placement)!.ThenInclude(p => p!.Application)!.ThenInclude(a => a!.Job)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+            q = q.Where(t => t.Status == status);
+        if (placementId is int pid)
+            q = q.Where(t => t.PlacementId == pid);
+
+        var rows = await q.OrderByDescending(t => t.WeekStart).ThenByDescending(t => t.Id).Take(200).ToListAsync();
+
+        // Resolve client names
+        var jobIds = rows.Select(t => t.Placement?.Application?.JobId ?? 0).Where(x => x > 0).Distinct().ToList();
+        var jobs = await _context.Jobs.AsNoTracking().Where(j => jobIds.Contains(j.Id)).ToListAsync();
+        var clientIds = jobs.Select(j => j.ClientId).Distinct().ToList();
+        var clients = await _context.Clients.AsNoTracking().Where(c => clientIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Name);
+
+        var result = rows.Select(t =>
+        {
+            var job = t.Placement?.Application?.Job;
+            var cand = t.Placement?.Application?.Candidate;
+            var billH = t.Placement == null ? 0 : RateMath.ToHourly(t.Placement.BillRate, t.Placement.RateUnit);
+            var payH = t.Placement == null ? 0 : RateMath.ToHourly(t.Placement.PayRate, t.Placement.RateUnit);
+            var clientName = job != null && clients.TryGetValue(job.ClientId, out var cn) ? cn : null;
+            return new
+            {
+                t.Id,
+                t.PlacementId,
+                t.WeekStart,
+                weekEnd = t.WeekStart.AddDays(6),
+                t.Hours,
+                t.Status,
+                t.Notes,
+                t.SubmittedBy,
+                t.SubmittedAt,
+                t.ApprovedBy,
+                t.ApprovedAt,
+                t.CreatedAt,
+                candidateName = cand?.Name,
+                jobTitle = job?.Title,
+                jobCode = job?.JobCode,
+                clientName,
+                billRateHourly = Math.Round(billH, 2),
+                payRateHourly = Math.Round(payH, 2),
+                billAmount = Math.Round(billH * t.Hours, 2),
+                payAmount = Math.Round(payH * t.Hours, 2),
+                margin = Math.Round((billH - payH) * t.Hours, 2)
+            };
+        });
+
+        return Ok(result);
+    }
+
+    [HttpPost("timesheets")]
+    public async Task<ActionResult> CreateTimesheet([FromBody] TimesheetDto dto)
+    {
+        var placement = await _context.Placements.FindAsync(dto.PlacementId);
+        if (placement == null) return NotFound(new { message = "Placement not found." });
+        if (dto.Hours <= 0 || dto.Hours > 168)
+            return BadRequest(new { message = "Hours must be between 0 and 168." });
+
+        var week = NormalizeWeekStart(dto.WeekStart);
+        var exists = await _context.Timesheets
+            .AnyAsync(t => t.PlacementId == dto.PlacementId && t.WeekStart == week && t.Status != "Rejected");
+        if (exists)
+            return Conflict(new { message = "A timesheet already exists for this placement and week." });
+
+        var me = CurrentUserDisplayName();
+        var ts = new Timesheet
+        {
+            PlacementId = dto.PlacementId,
+            WeekStart = week,
+            Hours = Math.Round(dto.Hours, 2),
+            Notes = dto.Notes,
+            Status = dto.Submit ? "Submitted" : "Draft",
+            CreatedAt = DateTime.UtcNow,
+            SubmittedBy = dto.Submit ? me : null,
+            SubmittedAt = dto.Submit ? DateTime.UtcNow : null
+        };
+        _context.Timesheets.Add(ts);
+        await _context.SaveChangesAsync();
+        await _audit.LogAsync(User, "Timesheet", ts.Id.ToString(), "Created",
+            $"Timesheet week {week:yyyy-MM-dd} · {ts.Hours}h · {ts.Status}");
+        return Ok(ts);
+    }
+
+    [HttpPut("timesheets/{id}")]
+    public async Task<ActionResult> UpdateTimesheet(int id, [FromBody] TimesheetDto dto)
+    {
+        var ts = await _context.Timesheets.FindAsync(id);
+        if (ts == null) return NotFound();
+        if (ts.Status is "Invoiced" or "Approved")
+            return BadRequest(new { message = "Cannot edit approved/invoiced timesheets." });
+
+        if (dto.Hours > 0) ts.Hours = Math.Round(dto.Hours, 2);
+        if (dto.Notes != null) ts.Notes = dto.Notes;
+        if (dto.WeekStart != default)
+            ts.WeekStart = NormalizeWeekStart(dto.WeekStart);
+
+        if (dto.Submit && ts.Status is "Draft" or "Rejected")
+        {
+            ts.Status = "Submitted";
+            ts.SubmittedBy = CurrentUserDisplayName();
+            ts.SubmittedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(ts);
+    }
+
+    [HttpPost("timesheets/{id}/submit")]
+    public async Task<ActionResult> SubmitTimesheet(int id)
+    {
+        var ts = await _context.Timesheets.FindAsync(id);
+        if (ts == null) return NotFound();
+        if (ts.Status is not ("Draft" or "Rejected"))
+            return BadRequest(new { message = "Only draft/rejected timesheets can be submitted." });
+        ts.Status = "Submitted";
+        ts.SubmittedBy = CurrentUserDisplayName();
+        ts.SubmittedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        await _audit.LogAsync(User, "Timesheet", id.ToString(), "Submitted", $"Submitted {ts.Hours}h");
+        return Ok(ts);
+    }
+
+    [HttpPost("timesheets/{id}/approve")]
+    public async Task<ActionResult> ApproveTimesheet(int id)
+    {
+        var ts = await _context.Timesheets.FindAsync(id);
+        if (ts == null) return NotFound();
+        if (ts.Status != "Submitted")
+            return BadRequest(new { message = "Only submitted timesheets can be approved." });
+        ts.Status = "Approved";
+        ts.ApprovedBy = CurrentUserDisplayName();
+        ts.ApprovedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        await _audit.LogAsync(User, "Timesheet", id.ToString(), "Approved", $"Approved {ts.Hours}h");
+        return Ok(ts);
+    }
+
+    [HttpPost("timesheets/{id}/reject")]
+    public async Task<ActionResult> RejectTimesheet(int id, [FromBody] OwnerDto? dto)
+    {
+        var ts = await _context.Timesheets.FindAsync(id);
+        if (ts == null) return NotFound();
+        if (ts.Status != "Submitted")
+            return BadRequest(new { message = "Only submitted timesheets can be rejected." });
+        ts.Status = "Rejected";
+        if (!string.IsNullOrWhiteSpace(dto?.Owner))
+            ts.Notes = (ts.Notes ?? "") + "\nRejected: " + dto.Owner;
+        await _context.SaveChangesAsync();
+        await _audit.LogAsync(User, "Timesheet", id.ToString(), "Rejected", "Timesheet rejected");
+        return Ok(ts);
+    }
+
+    // ── INVOICES ─────────────────────────────────────────────
+    public class CreateInvoiceDto
+    {
+        public List<int> TimesheetIds { get; set; } = new();
+        public string? Notes { get; set; }
+    }
+
+    [HttpGet("invoices")]
+    public async Task<ActionResult> ListInvoices()
+    {
+        var rows = await _context.Invoices.AsNoTracking()
+            .Include(i => i.Client)
+            .OrderByDescending(i => i.CreatedAt)
+            .Take(100)
+            .ToListAsync();
+        return Ok(rows.Select(i => new
+        {
+            i.Id,
+            i.InvoiceNumber,
+            i.ClientId,
+            clientName = i.Client?.Name,
+            i.PlacementId,
+            i.PeriodStart,
+            i.PeriodEnd,
+            i.BillHours,
+            i.BillRateHourly,
+            i.Amount,
+            i.Status,
+            i.Notes,
+            i.TimesheetIdsJson,
+            i.CreatedBy,
+            i.CreatedAt
+        }));
+    }
+
+    [HttpPost("invoices/from-timesheets")]
+    public async Task<ActionResult> CreateInvoiceFromTimesheets([FromBody] CreateInvoiceDto dto)
+    {
+        if (dto.TimesheetIds == null || dto.TimesheetIds.Count == 0)
+            return BadRequest(new { message = "Select at least one approved timesheet." });
+
+        var sheets = await _context.Timesheets
+            .Include(t => t.Placement)!.ThenInclude(p => p!.Application)!.ThenInclude(a => a!.Job)
+            .Where(t => dto.TimesheetIds.Contains(t.Id))
+            .ToListAsync();
+
+        if (sheets.Count == 0) return BadRequest(new { message = "No timesheets found." });
+        if (sheets.Any(t => t.Status != "Approved"))
+            return BadRequest(new { message = "All timesheets must be Approved before invoicing." });
+
+        // Single client invoice: all placements must map to same client
+        var jobIds = sheets.Select(t => t.Placement?.Application?.JobId ?? 0).Distinct().ToList();
+        var jobs = await _context.Jobs.Where(j => jobIds.Contains(j.Id)).ToListAsync();
+        var clientIds = jobs.Select(j => j.ClientId).Distinct().ToList();
+        if (clientIds.Count != 1)
+            return BadRequest(new { message = "All timesheets must belong to the same client." });
+
+        var clientId = clientIds[0];
+        decimal totalHours = 0;
+        decimal totalAmount = 0;
+        decimal weightedRate = 0;
+        foreach (var t in sheets)
+        {
+            var billH = RateMath.ToHourly(t.Placement!.BillRate, t.Placement.RateUnit);
+            totalHours += t.Hours;
+            totalAmount += billH * t.Hours;
+            weightedRate += billH * t.Hours;
+        }
+        var avgRate = totalHours > 0 ? Math.Round(weightedRate / totalHours, 2) : 0;
+        totalAmount = Math.Round(totalAmount, 2);
+
+        var count = await _context.Invoices.CountAsync() + 1;
+        var inv = new Invoice
+        {
+            InvoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{count:D4}",
+            ClientId = clientId,
+            PlacementId = sheets.Select(s => s.PlacementId).Distinct().Count() == 1 ? sheets[0].PlacementId : null,
+            PeriodStart = sheets.Min(s => s.WeekStart),
+            PeriodEnd = sheets.Max(s => s.WeekStart.AddDays(6)),
+            BillHours = Math.Round(totalHours, 2),
+            BillRateHourly = avgRate,
+            Amount = totalAmount,
+            Status = "Draft",
+            Notes = dto.Notes,
+            TimesheetIdsJson = System.Text.Json.JsonSerializer.Serialize(sheets.Select(s => s.Id).ToList()),
+            CreatedBy = CurrentUserDisplayName(),
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Invoices.Add(inv);
+
+        foreach (var t in sheets)
+            t.Status = "Invoiced";
+
+        await _context.SaveChangesAsync();
+        await _audit.LogAsync(User, "Invoice", inv.Id.ToString(), "Created",
+            $"{inv.InvoiceNumber} · {inv.Amount:C} · {inv.BillHours}h");
+
+        return Ok(new
+        {
+            inv.Id,
+            inv.InvoiceNumber,
+            inv.ClientId,
+            inv.Amount,
+            inv.BillHours,
+            inv.BillRateHourly,
+            inv.Status,
+            inv.PeriodStart,
+            inv.PeriodEnd,
+            timesheetIds = sheets.Select(s => s.Id)
+        });
+    }
+
+    [HttpPut("invoices/{id}/status")]
+    public async Task<ActionResult> SetInvoiceStatus(int id, [FromBody] OwnerDto dto)
+    {
+        var inv = await _context.Invoices.FindAsync(id);
+        if (inv == null) return NotFound();
+        var status = (dto.Owner ?? "").Trim();
+        if (status is not ("Draft" or "Sent" or "Paid"))
+            return BadRequest(new { message = "Status must be Draft, Sent, or Paid." });
+        inv.Status = status;
+        await _context.SaveChangesAsync();
+        await _audit.LogAsync(User, "Invoice", id.ToString(), "Status", $"Invoice → {status}");
+        return Ok(inv);
+    }
+
+    [HttpGet("invoices/{id}/export")]
+    public async Task<IActionResult> ExportInvoiceCsv(int id)
+    {
+        var inv = await _context.Invoices.AsNoTracking()
+            .Include(i => i.Client)
+            .FirstOrDefaultAsync(i => i.Id == id);
+        if (inv == null) return NotFound();
+
+        var bytes = CsvExport.ToUtf8Bom(
+            new[] { "InvoiceNumber", "Client", "PeriodStart", "PeriodEnd", "Hours", "BillRateHourly", "Amount", "Status", "CreatedAt" },
+            new[]
+            {
+                new object?[]
+                {
+                    inv.InvoiceNumber,
+                    inv.Client?.Name,
+                    inv.PeriodStart.ToString("yyyy-MM-dd"),
+                    inv.PeriodEnd.ToString("yyyy-MM-dd"),
+                    inv.BillHours,
+                    inv.BillRateHourly,
+                    inv.Amount,
+                    inv.Status,
+                    inv.CreatedAt.ToString("o")
+                }
+            });
+        await _audit.LogAsync(User, "Invoice", id.ToString(), "Exported", $"Exported {inv.InvoiceNumber}");
+        return File(bytes, "text/csv; charset=utf-8", $"{inv.InvoiceNumber}.csv");
+    }
 }
 
 

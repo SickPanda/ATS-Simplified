@@ -31,6 +31,8 @@ public class AtsDbContext : IdentityDbContext<IdentityUser>
     public DbSet<HotlistMember> HotlistMembers { get; set; } = null!;
     public DbSet<SavedSearch> SavedSearches { get; set; } = null!;
     public DbSet<CandidateDocument> CandidateDocuments { get; set; } = null!;
+    public DbSet<Timesheet> Timesheets { get; set; } = null!;
+    public DbSet<Invoice> Invoices { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
